@@ -30,6 +30,8 @@ class Bone:
 
 
 def read_line(stream, idx):
+  if idx >= len(stream):
+    return None, idx
   line = stream[idx].strip().split()
   idx += 1
   return line, idx
@@ -116,3 +118,28 @@ def parse_asf(file_path):
     for nm in line[1:]:
       bones[nm].parent = line[0]
   return bones
+
+
+def parse_amc(file_path):
+  with open(file_path) as f:
+    content = f.read().splitlines()
+
+  for idx, line in enumerate(content):
+    if line == ':DEGREES':
+      content = content[idx+1:]
+      break
+
+  frames = []
+  idx = 0
+  line, idx = read_line(content, idx)
+  assert line[0].isnumeric()
+  while True:
+    bone_degree = {}
+    while True:
+      line, idx = read_line(content, idx)
+      if line is None:
+        return frames
+      if line[0].isnumeric():
+        break
+      bone_degree[line[0]] = [float(deg) for deg in line[1:]]
+    frames.append(bone_degree)
