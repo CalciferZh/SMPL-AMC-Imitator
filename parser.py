@@ -2,9 +2,10 @@ import numpy as np
 
 
 class Bone:
-  def __init__(self, name, direction, axis, dof, limits):
+  def __init__(self, name, direction, length, axis, dof, limits):
     self.name = name
     self.direction = direction
+    self.length = length
     self.axis = axis
     self.limits = np.zeros([3, 2])
     for lm, nm in zip(limits, dof):
@@ -47,7 +48,7 @@ def parse_asf(file_path):
       content = content[idx+1:]
 
   # read bones
-  bones = {'root': Bone('root', np.zeros(3), np.zeros(3), [], [])}
+  bones = {'root': Bone('root', np.zeros(3), 0, np.zeros(3), [], [])}
   idx = 0
   while True:
     line, idx = read_line(content, idx)
@@ -71,6 +72,7 @@ def parse_asf(file_path):
     # skip length
     line, idx = read_line(content, idx)
     assert line[0] == 'length'
+    length = float(line[1])
 
     line, idx = read_line(content, idx)
     assert line[0] == 'axis'
@@ -100,6 +102,7 @@ def parse_asf(file_path):
     bones[name] = Bone(
       name,
       direction,
+      length,
       axis,
       dof,
       limits
