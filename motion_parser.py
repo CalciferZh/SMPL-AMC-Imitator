@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class Bone:
+class Joint:
   def __init__(self, name, direction, length, axis, dof, limits):
     self.name = name
     self.direction = direction
@@ -21,7 +21,7 @@ class Bone:
 
   def pretty_print(self):
     print('===================================')
-    print('bone: %s' % self.name)
+    print('joint: %s' % self.name)
     print('direction:')
     print(self.direction)
     print('axis:')
@@ -39,8 +39,30 @@ def read_line(stream, idx):
   return line, idx
 
 
+def rotation_matrix(degree):
+    rx = np.deg2rad(float(degree[0]))
+    ry = np.deg2rad(float(degree[1]))
+    rz = np.deg2rad(float(degree[2]))
+
+    Cx = np.matrix([[1, 0, 0],
+                    [0, np.cos(rx), np.sin(rx)],
+                    [0, -np.sin(rx), np.cos(rx)]])
+
+    Cy = np.matrix([[np.cos(ry), 0, -np.sin(ry)],
+                    [0, 1, 0],
+                    [np.sin(ry), 0, np.cos(ry)]])
+
+    Cz = np.matrix([[np.cos(rz), np.sin(rz), 0],
+                    [-np.sin(rz), np.cos(rz), 0],
+                    [0, 0, 1]])
+
+    C = Cx * Cy * Cz
+    Cinv = np.linalg.inv(C)
+    return C, Cinv
+
+
 def parse_asf(file_path):
-  '''read bonedata only'''
+  '''read joint data only'''
   with open(file_path) as f:
     content = f.read().splitlines()
 
@@ -48,8 +70,8 @@ def parse_asf(file_path):
     if line == ':bonedata':
       content = content[idx+1:]
 
-  # read bones
-  bones = {'root': Bone('root', np.zeros(3), 0, np.zeros(3), [], [])}
+  # read joints
+  joints = {'root': Joint('root', np.zeros(3), 0, np.zeros(3), [], [])}
   idx = 0
   while True:
     line, idx = read_line(content, idx)
@@ -100,7 +122,7 @@ def parse_asf(file_path):
       line, idx = read_line(content, idx)
 
     assert line[0] == 'end'
-    bones[name] = Bone(
+    joints[name] = Joint(
       name,
       direction,
       length,
@@ -118,10 +140,11 @@ def parse_asf(file_path):
     if line[0] == 'end':
       break
     assert len(line) >= 2
-    bones[line[0]].children = line[1:]
+    for joint_name in line[1:]:
+      joints[line[0]].children.append(joints[joint_name])
     for nm in line[1:]:
-      bones[nm].parent = line[0]
-  return bones
+      joints[nm].parent = joints[line[0]]
+  return joints
 
 
 def parse_amc(file_path):
@@ -138,12 +161,12 @@ def parse_amc(file_path):
   line, idx = read_line(content, idx)
   assert line[0].isnumeric()
   while True:
-    bone_degree = {}
+    joint_degree = {}
     while True:
       line, idx = read_line(content, idx)
       if line is None:
         return frames
       if line[0].isnumeric():
         break
-      bone_degree[line[0]] = [float(deg) for deg in line[1:]]
-    frames.append(bone_degree)
+      joint_degree[line[0]] = [float(deg) for deg in line[1:]]
+    frames.append(joint_degree)
