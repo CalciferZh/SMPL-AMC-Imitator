@@ -17,6 +17,7 @@ class Bone:
         self.limits[2] = lm
     self.parent = None
     self.children = []
+    self.coordinate = None
 
   def pretty_print(self):
     print('===================================')
