@@ -22,7 +22,7 @@ def draw_body(joints):
       ys = [child.coordinate[1], parent.coordinate[1]]
       zs = [child.coordinate[2], parent.coordinate[2]]
       plt.plot(xs, ys, zs, 'r')
-
+  plt.axis('equal')
   plt.show()
 
 
