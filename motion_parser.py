@@ -4,9 +4,9 @@ import numpy as np
 class Joint:
   def __init__(self, name, direction, length, axis, dof, limits):
     self.name = name
-    self.direction = direction
+    self.direction = np.matrix(direction)
     self.length = length
-    self.axis = axis
+    self.C, self.Cinv = rotation_matrix_axis(axis)
     self.limits = np.zeros([3, 2])
     for lm, nm in zip(limits, dof):
       if nm == 'rx':
@@ -18,6 +18,25 @@ class Joint:
     self.parent = None
     self.children = []
     self.coordinate = None
+    self.matrix = None
+
+  def set_motion(self, motion):
+    if self.name == 'root':
+      self.coordinate = np.array(motion['root'][:3])
+      motion['root'] = motion['root'][3:]
+      self.matrix = rotation_matrix(self.C, self.Cinv, motion[self.name])
+    else:
+      # set rx ry rz according to degree of freedom
+      idx = 0
+      rotation = np.zeros(3)
+      for axis, lm in enumerate(self.limits):
+        if not np.array_equal(lm, np.zeros(2)):
+          rotation[axis] = motion[self.name][idx]
+          idx += 1
+      self.matrix = rotation_matrix(self.C, self.Cinv, rotation) * self.parent.matrix
+      self.coordinate = np.squeeze(np.array(self.parent.coordinate + self.direction * self.matrix))
+    for child in self.children:
+      child.set_motion(motion)
 
   def pretty_print(self):
     print('===================================')
@@ -31,34 +50,57 @@ class Joint:
     print('children:', self.children)
 
 
+def rotation_matrix_axis(axis):
+    # Change coordinate system through matrix C
+  rx = np.deg2rad(float(axis[0]))
+  ry = np.deg2rad(float(axis[1]))
+  rz = np.deg2rad(float(axis[2]))
+
+  Cx = np.matrix([[1, 0, 0],
+                  [0, np.cos(rx), np.sin(rx)],
+                  [0, -np.sin(rx), np.cos(rx)]])
+
+  Cy = np.matrix([[np.cos(ry), 0, -np.sin(ry)],
+                  [0, 1, 0],
+                  [np.sin(ry), 0, np.cos(ry)]])
+
+  Cz = np.matrix([[np.cos(rz), np.sin(rz), 0],
+                  [-np.sin(rz), np.cos(rz), 0],
+                  [0, 0, 1]])
+
+  C = Cx * Cy * Cz
+  Cinv = np.linalg.inv(C)
+  return C, Cinv
+
+
+def rotation_matrix(C, Cinv, motion):
+    # Construct rotation matrix M
+    tx = np.deg2rad(motion[0])
+    ty = np.deg2rad(motion[1])
+    tz = np.deg2rad(motion[2])
+
+    Mx = np.matrix([[1, 0, 0],
+                    [0, np.cos(tx), np.sin(tx)],
+                    [0, -np.sin(tx), np.cos(tx)]])
+
+    My = np.matrix([[np.cos(ty), 0, -np.sin(ty)],
+                    [0, 1, 0],
+                    [np.sin(ty), 0, np.cos(ty)]])
+
+    Mz = np.matrix([[np.cos(tz), np.sin(tz), 0],
+                    [-np.sin(tz), np.cos(tz), 0],
+                    [0, 0, 1]])
+    M = Mx * My * Mz
+    L = Cinv * M * C
+    return L
+
+
 def read_line(stream, idx):
   if idx >= len(stream):
     return None, idx
   line = stream[idx].strip().split()
   idx += 1
   return line, idx
-
-
-def rotation_matrix(degree):
-    rx = np.deg2rad(float(degree[0]))
-    ry = np.deg2rad(float(degree[1]))
-    rz = np.deg2rad(float(degree[2]))
-
-    Cx = np.matrix([[1, 0, 0],
-                    [0, np.cos(rx), np.sin(rx)],
-                    [0, -np.sin(rx), np.cos(rx)]])
-
-    Cy = np.matrix([[np.cos(ry), 0, -np.sin(ry)],
-                    [0, 1, 0],
-                    [np.sin(ry), 0, np.cos(ry)]])
-
-    Cz = np.matrix([[np.cos(rz), np.sin(rz), 0],
-                    [-np.sin(rz), np.cos(rz), 0],
-                    [0, 0, 1]])
-
-    C = Cx * Cy * Cz
-    Cinv = np.linalg.inv(C)
-    return C, Cinv
 
 
 def parse_asf(file_path):
@@ -170,3 +212,20 @@ def parse_amc(file_path):
         break
       joint_degree[line[0]] = [float(deg) for deg in line[1:]]
     frames.append(joint_degree)
+
+
+def update_coord(joint):
+  update_matrix(joint)
+  if joint.parent is not None:
+    joint.coordinate = joint.parent.coordinate + joint.direction * joint.matrix * joint.length
+    for child in joint.children:
+      update_coord(child)
+
+
+def parse_motion(motion, joints):
+  for k, v in motion.items():
+    joints[k].motion = v
+  root_joint = joints['root']
+  root_joint.coordinate = np.array(root_joint.motion[:3])
+  root_joint.motion = np.array(root_joint.motion[3:])
+  update_coord(root_joint)

@@ -4,16 +4,7 @@ import motion_parser
 from mpl_toolkits.mplot3d import Axes3D
 
 
-def set_bone_traverse(parent_joint):
-  for child_joint in parent_joint.children:
-    child_joint.coordinate = parent_joint.coordinate - child_joint.direction * child_joint.length
-    set_bone_traverse(child_joint)
-
-
 def draw_body(joints):
-  root_joint = joints['root']
-  set_bone_traverse(root_joint)
-
   fig = plt.figure()
   Axes3D(fig)
   xs, ys, zs = [], [], []
@@ -37,5 +28,7 @@ def draw_body(joints):
 
 if __name__ == '__main__':
   joints = motion_parser.parse_asf('./data/01/01.asf')
-  joints['root'].coordinate = np.zeros(3)
-  draw_body(joints)
+  motions = motion_parser.parse_amc('./data/01/01_01.amc')
+  for idx in range(0, len(motions), 60):
+    joints['root'].set_motion(motions[idx])
+    draw_body(joints)
