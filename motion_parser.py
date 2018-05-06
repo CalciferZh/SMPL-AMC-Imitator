@@ -25,7 +25,6 @@ class Joint:
       self.coordinate = np.array(motion['root'][:3])
       motion['root'] = motion['root'][3:]
       self.matrix = rotation_matrix(self.C, self.Cinv, motion[self.name])
-
     else:
       # set rx ry rz according to degree of freedom
       idx = 0
@@ -35,7 +34,7 @@ class Joint:
           rotation[axis] = motion[self.name][idx]
           idx += 1
       self.matrix = rotation_matrix(self.C, self.Cinv, rotation) * self.parent.matrix
-      self.coordinate = np.squeeze(np.array(self.parent.coordinate + self.direction * self.matrix))
+      self.coordinate = np.squeeze(np.array(self.parent.coordinate + self.length * self.direction * self.matrix))
     for child in self.children:
       child.set_motion(motion)
 

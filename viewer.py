@@ -8,7 +8,7 @@ def draw_body(joints):
   fig = plt.figure()
   ax = Axes3D(fig)
 
-  ax.set_xlim3d(-30, 30)
+  ax.set_xlim3d(-30, 50)
   ax.set_ylim3d(0, 30)
   ax.set_zlim3d(0, 30)
 
