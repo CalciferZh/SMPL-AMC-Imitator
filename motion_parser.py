@@ -25,6 +25,7 @@ class Joint:
       self.coordinate = np.array(motion['root'][:3])
       motion['root'] = motion['root'][3:]
       self.matrix = rotation_matrix(self.C, self.Cinv, motion[self.name])
+
     else:
       # set rx ry rz according to degree of freedom
       idx = 0
@@ -43,8 +44,6 @@ class Joint:
     print('joint: %s' % self.name)
     print('direction:')
     print(self.direction)
-    print('axis:')
-    print(self.axis)
     print('limits:', self.limits)
     print('parent:', self.parent)
     print('children:', self.children)
@@ -213,19 +212,3 @@ def parse_amc(file_path):
       joint_degree[line[0]] = [float(deg) for deg in line[1:]]
     frames.append(joint_degree)
 
-
-def update_coord(joint):
-  update_matrix(joint)
-  if joint.parent is not None:
-    joint.coordinate = joint.parent.coordinate + joint.direction * joint.matrix * joint.length
-    for child in joint.children:
-      update_coord(child)
-
-
-def parse_motion(motion, joints):
-  for k, v in motion.items():
-    joints[k].motion = v
-  root_joint = joints['root']
-  root_joint.coordinate = np.array(root_joint.motion[:3])
-  root_joint.motion = np.array(root_joint.motion[3:])
-  update_coord(root_joint)
