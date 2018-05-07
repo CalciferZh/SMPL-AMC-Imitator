@@ -1,3 +1,7 @@
+# custom
+data/
+*.pkl
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -99,6 +103,3 @@ ENV/
 
 # mypy
 .mypy_cache/
-
-# custom
-data/
