@@ -13,22 +13,30 @@ def compute_rodrigues(x, y):
   return transforms3d.axangles.axangle2mat(axis, theta)
 
 
-def compute_default_R(joints):
-  limbs = ['femur', 'radius', 'wrist', 'hand']
-  R = np.broadcast_to(np.expand_dims(np.eye(3), axis=0), (24, 3, 3))
-  _, _, J = smpl.smpl_model('./model.pkl', R)
+def process_femur(femur):
+  child_joint = femur
+  parent_joint = child_joint.parent
+  smpl_direction = child_joint.coordinate - parent_joint.coordinate
+  smpl_direction /= np.linalg.norm(smpl_direction)
+  asf_direction = np.squeeze(np.array(child_joint.direction))
+  child_joint.default_R = compute_rodrigues(smpl_direction, asf_direction)
+
+
+def set_to_smpl(joints, smpl_J):
   semantic = motion_parser.joint_semantic()
   for k, v in semantic.items():
-    joints[v].coordinate = J[k]
-  for k, v in semantic.items():
-    child_joint = joints[v]
-    parent_joint = child_joint.parent
-    if parent_joint is not None:
-      if child_joint.name[1:] in limbs:
-        smpl_direction = child_joint.coordinate - parent_joint.coordinate
-        smpl_direction /= np.linalg.norm(smpl_direction)
-        asf_direction = np.squeeze(np.array(child_joint.direction))
-        child_joint.default_R = compute_rodrigues(smpl_direction, asf_direction)
+    joints[v].coordinate = smpl_J[k] / 0.45 * 10
+
+
+def compute_default_R(joints):
+  '''Actually we only consider legs'''
+  R = np.broadcast_to(np.expand_dims(np.eye(3), axis=0), (24, 3, 3))
+  _, _, J = smpl.smpl_model('./model.pkl', R)
+
+  set_to_smpl(joints, J)
+
+  process_femur(joints['lfemur'])
+  process_femur(joints['rfemur'])
 
 
 def draw_body(joints):
@@ -78,25 +86,24 @@ if __name__ == '__main__':
   joints = motion_parser.parse_asf('./data/01/01.asf')
   compute_default_R(joints)
 
+  motions = motion_parser.parse_amc('./data/nopose.amc')
   # motions = motion_parser.parse_amc('./data/01/01_01.amc')
   # joints['root'].set_motion(motions[0], direction=np.array([-1, -1, -1]))
+  joints['root'].set_motion(motions[0])
 
   semantic = motion_parser.joint_semantic()
   jindex = motion_parser.joint_index()
 
-  # R = np.broadcast_to(np.expand_dims(np.eye(3), axis=0), (24, 3, 3))
-  # _, _, J = smpl.smpl_model('./model.pkl', R)
-  # J /= 0.45
-  # J *= 10
-  # J += np.array([0, 0, 40])
-  # joints_new = motion_parser.parse_asf('./data/01/01.asf')
-  # for k, v in semantic.items():
-  #   joints_new[v].coordinate = J[k]
+  R = np.broadcast_to(np.expand_dims(np.eye(3), axis=0), (24, 3, 3))
+  _, _, J = smpl.smpl_model('./model.pkl', R)
+  J += np.array([0, 0, 1.5])
+  joints_new = motion_parser.parse_asf('./data/01/01.asf')
+  set_to_smpl(joints_new, J)
 
-  # for k, v in joints_new.items():
-  #   joints[k + '_'] = v
+  for k, v in joints_new.items():
+    joints[k + '_'] = v
 
-  # draw_body(joints)
+  draw_body(joints)
 
   R = np.empty([24, 3, 3])
   for i in range(24):
@@ -106,37 +113,11 @@ if __name__ == '__main__':
       idx = jindex[joints[v].parent.name]
       R[idx] = joints[v].default_R
 
-  for k, v in semantic.items():
-    R[k] = np.dot(R[k], np.array(joints[v].matrix))
-    if joints[v].parent is not None:
-      R[k] = np.dot(R[k], np.array(np.linalg.inv(joints[v].parent.matrix)))
+  # for k, v in semantic.items():
+  #   R[k] = np.dot(R[k], np.array(joints[v].matrix))
+  #   if joints[v].parent is not None:
+  #     R[k] = np.dot(R[k], np.array(np.linalg.inv(joints[v].parent.matrix)))
 
   verts, faces, J = smpl.smpl_model('./model.pkl', R)
   obj_save('./smpl.obj', verts, faces)
 
-  # J *= 39
-  # semantic = motion_parser.joint_semantic()
-  # for k, v in semantic.items():
-  #   joints[v].coordinate = J[k]
-  # draw_body(joints)
-  # motions = motion_parser.parse_amc('./data/fake.amc')
-  # # motions = motion_parser.parse_amc('./data/01/01_01.amc')
-  # # motions = motion_parser.parse_amc('./data/nopose.amc')
-  # semantic = motion_parser.joint_semantic()
-  # for idx in range(0, len(motions), 60):
-  #   rem = copy.deepcopy(motions[idx])
-  #   joints['root'].set_motion(motions[idx], direction=np.array([-1, -1, -1]))
-
-  #   R = np.empty([24, 3, 3])
-  #   for k, v in semantic.items():
-  #     R[k] = joints[v].matrix
-  #     if joints[v].parent is not None:
-  #       R[k] = R[k] * np.linalg.inv(joints[v].parent.matrix)
-
-  #   verts, faces = smpl.smpl_model('./model.pkl', R)
-
-  #   obj_save('smpl.obj', verts, faces)
-
-  #   joints['root'].set_motion(rem, direction=np.array([1, 1, 1]))
-  #   draw_body(joints)
-  #   break
