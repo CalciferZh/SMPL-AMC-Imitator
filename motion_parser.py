@@ -8,6 +8,7 @@ class Joint:
     self.length = length
     self.C, self.Cinv = rotation_matrix_axis(axis)
     self.limits = np.zeros([3, 2])
+    self.movable = len(dof) == 0
     for lm, nm in zip(limits, dof):
       if nm == 'rx':
         self.limits[0] = lm
@@ -20,10 +21,11 @@ class Joint:
     self.coordinate = None
     self.matrix = None
 
-  def set_motion(self, motion):
+
+  def set_motion(self, motion, direction=np.ones(3)):
     if self.name == 'root':
       self.coordinate = np.array(motion['root'][:3])
-      motion['root'] = motion['root'][3:]
+      motion['root'] = motion['root'][3:] * direction
       self.matrix = rotation_matrix(self.C, self.Cinv, motion[self.name])
     else:
       # set rx ry rz according to degree of freedom
@@ -33,10 +35,11 @@ class Joint:
         if not np.array_equal(lm, np.zeros(2)):
           rotation[axis] = motion[self.name][idx]
           idx += 1
+      rotation *= direction
       self.matrix = rotation_matrix(self.C, self.Cinv, rotation) * self.parent.matrix
       self.coordinate = np.squeeze(np.array(self.parent.coordinate + self.length * self.direction * self.matrix))
     for child in self.children:
-      child.set_motion(motion)
+      child.set_motion(motion, direction)
 
   def to_dict(self):
     ret = {self.name: self}
@@ -219,30 +222,38 @@ def parse_amc(file_path):
 
 
 def joint_semantic():
-    ret = {
-        0: 'root',
-        1: 'lhipjoint',
-        2: 'rhipjoint',
-        3: 'lowerback',
-        4: 'lfemur',
-        5: 'rfemur',
-        6: 'upperback',
-        7: 'ltibia',
-        8: 'rtibia',
-        9: 'thorax',
-        10: 'lfoot',
-        11: 'rfoot',
-        12: 'lowerneck',
-        13: 'lclavicle',
-        14: 'rclavicle',
-        15: 'upperneck',
-        16: 'lhumerus',
-        17: 'rhumerus',
-        18: 'lradius',
-        19: 'rradius',
-        20: 'lwrist',
-        21: 'rwrist',
-        22: 'lhand',
-        23: 'rhand'
-    }
-    return ret
+  ret = {
+    0: 'root',
+    1: 'lhipjoint',
+    2: 'rhipjoint',
+    3: 'lowerback',
+    4: 'lfemur',
+    5: 'rfemur',
+    6: 'upperback',
+    7: 'ltibia',
+    8: 'rtibia',
+    9: 'thorax',
+    10: 'lfoot',
+    11: 'rfoot',
+    12: 'lowerneck',
+    13: 'lclavicle',
+    14: 'rclavicle',
+    15: 'upperneck',
+    16: 'lhumerus',
+    17: 'rhumerus',
+    18: 'lradius',
+    19: 'rradius',
+    20: 'lwrist',
+    21: 'rwrist',
+    22: 'lhand',
+    23: 'rhand'
+  }
+  return ret
+
+
+def joint_index():
+  semantic = joint_semantic()
+  index = {}
+  for k, v in semantic.items():
+    index[v] = k
+  return index

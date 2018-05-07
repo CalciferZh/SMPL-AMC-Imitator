@@ -28,7 +28,37 @@ def pack(x):
     return np.dstack((np.zeros((x.shape[0], 4, 3)), x))
 
 
-def smpl_model(model_path, betas, pose, trans, want_J=False):
+def smpl_model(model_path, R):
+    with open(model_path, 'rb') as f:
+        params = pickle.load(f)
+
+    J_regressor = params['J_regressor']
+    weights = params['weights']
+    v_template = params['v_template']
+    faces = params['f']
+
+    kintree_table = params['kintree_table']
+    id_to_col = {kintree_table[1, i]: i for i in range(kintree_table.shape[1])}
+    parent = {
+        i: id_to_col[kintree_table[0, i]]
+        for i in range(1, kintree_table.shape[1])
+    }
+    v_shaped = v_template
+    J = J_regressor.dot(v_shaped)
+    R_cube_big = R
+    v_posed = v_shaped
+    results = np.empty((kintree_table.shape[1], 4, 4))
+    results[0, :, :] = with_zeros(np.hstack((R_cube_big[0], J[0, :].reshape((3, 1)))))
+    for i in range(1, kintree_table.shape[1]):
+        results[i, :, :] = results[parent[i], :, :].dot(with_zeros(np.hstack((R_cube_big[i], ((J[i, :] - J[parent[i], :]).reshape((3, 1)))))))
+    results = results - pack(np.matmul(results, np.hstack((J, np.zeros((24, 1)))).reshape((24, 4, 1))))
+    T = np.tensordot(weights, results, axes=((1), (0)))
+    rest_shape_h = np.hstack((v_posed, np.ones((v_posed.shape[0], 1))))
+    verts = np.matmul(T, rest_shape_h.reshape((-1, 4, 1))).reshape((-1, 4))[:, :3]
+    return verts, faces, J
+
+
+def smpl_model_backup(model_path, betas, pose, trans, want_J=False):
     with open(model_path, 'rb') as f:
         params = pickle.load(f)
 
@@ -49,6 +79,7 @@ def smpl_model(model_path, betas, pose, trans, want_J=False):
     J = J_regressor.dot(v_shaped)
     pose_cube = pose.reshape((-1, 1, 3))
     R_cube_big = rodrigues(pose_cube)
+    print(R_cube_big)
     R_cube = R_cube_big[1:]
     I_cube = np.broadcast_to(np.expand_dims(np.eye(3), axis=0), (R_cube.shape[0], 3, 3))
     lrotmin = (R_cube - I_cube).ravel()
@@ -80,7 +111,11 @@ def simple_smpl(want_J=False):
     pose[18] = np.array([0, -np.pi/2, 0])
     pose[19] = np.array([0, np.pi/2, 0])
 
-    return smpl_model('./model.pkl', betas, pose, trans, want_J)
+    pose = np.zeros((24, 3))
+    betas = np.zeros(10)
+    trans = np.zeros(3)
+
+    return smpl_model_backup('./model.pkl', betas, pose, trans, want_J)
 
 
 if __name__ == '__main__':
