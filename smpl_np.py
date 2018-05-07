@@ -28,7 +28,7 @@ def pack(x):
     return np.dstack((np.zeros((x.shape[0], 4, 3)), x))
 
 
-def smpl_model(model_path, betas, pose, trans):
+def smpl_model(model_path, betas, pose, trans, want_J=False):
     with open(model_path, 'rb') as f:
         params = pickle.load(f)
 
@@ -62,10 +62,12 @@ def smpl_model(model_path, betas, pose, trans):
     rest_shape_h = np.hstack((v_posed, np.ones((v_posed.shape[0], 1))))
     v = np.matmul(T, rest_shape_h.reshape((-1, 4, 1))).reshape((-1, 4))[:, :3]
     result = v + trans.reshape((1, 3))
+    if want_J:
+        return result, f, J
     return result, f
 
 
-if __name__ == '__main__':
+def simple_smpl(want_J=False):
     pose_size = 72
     beta_size = 10
 
@@ -78,12 +80,16 @@ if __name__ == '__main__':
     pose[18] = np.array([0, -np.pi/2, 0])
     pose[19] = np.array([0, np.pi/2, 0])
 
-    result, faces = smpl_model('./model.pkl', betas, pose, trans)
+    return smpl_model('./model.pkl', betas, pose, trans, want_J)
 
-    outmesh_path = './smpl_np.obj'
-    with open(outmesh_path, 'w') as fp:
-        for v in result:
-            fp.write('v %f %f %f\n' % (v[0], v[1], v[2]))
 
-        for f in faces + 1:
-            fp.write('f %d %d %d\n' % (f[0], f[1], f[2]))
+if __name__ == '__main__':
+    result, faces = simple_smpl()
+
+    # outmesh_path = './smpl_np.obj'
+    # with open(outmesh_path, 'w') as fp:
+    #     for v in result:
+    #         fp.write('v %f %f %f\n' % (v[0], v[1], v[2]))
+
+    #     for f in faces + 1:
+    #         fp.write('f %d %d %d\n' % (f[0], f[1], f[2]))
