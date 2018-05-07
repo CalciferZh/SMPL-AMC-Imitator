@@ -20,6 +20,7 @@ class Joint:
     self.children = []
     self.coordinate = None
     self.matrix = None
+    self.default_R = np.eye(3)
 
 
   def set_motion(self, motion, direction=np.ones(3)):
