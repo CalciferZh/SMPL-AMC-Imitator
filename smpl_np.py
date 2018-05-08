@@ -3,15 +3,14 @@ import pickle
 
 
 class SMPLModel():
+    '''Simplified SMPL model. All pose-induced transformation is ignored. Also ignore beta.'''
     def __init__(self, model_path):
         with open(model_path, 'rb') as f:
             params = pickle.load(f)
 
             self.J_regressor = params['J_regressor']
             self.weights = params['weights']
-            self.posedirs = params['posedirs']
             self.v_template = params['v_template']
-            self.shapedirs = params['shapedirs']
             self.faces = params['f']
             self.kintree_table = params['kintree_table']
 
@@ -47,13 +46,11 @@ class SMPLModel():
 
 
     def update(self):
-        v_shaped = self.shapedirs.dot(self.beta) + self.v_template
+        v_shaped = self.v_template
         self.J = self.J_regressor.dot(v_shaped)
         pose_cube = self.pose.reshape((-1, 1, 3))
         self.R = self.rodrigues(pose_cube)
-        I_cube = np.broadcast_to(np.expand_dims(np.eye(3), axis=0), (self.R.shape[0]-1, 3, 3))
-        lrotmin = (self.R[1:] - I_cube).ravel()
-        v_posed = v_shaped + self.posedirs.dot(lrotmin)
+        v_posed = v_shaped
         results = np.empty((self.kintree_table.shape[1], 4, 4))
         results[0, :, :] = self.with_zeros(np.hstack((self.R[0], self.J[0, :].reshape([3, 1]))))
         for i in range(1, self.kintree_table.shape[1]):
