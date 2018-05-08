@@ -4,6 +4,7 @@ import motion_parser
 import smpl_np
 import copy
 import transforms3d
+import copy
 from mpl_toolkits.mplot3d import Axes3D
 
 
@@ -52,8 +53,8 @@ def compute_default_R(joints, smpl_J):
   for bone in ['lfemur', 'rfemur']:
     R[as_map[bone]] = process_femur(joints[bone])
 
-  # for bone in ['ltibia', 'rtibia']:
-  #   R[as_map[bone]] = process_tibia(joints[bone])
+  for bone in ['ltibia', 'rtibia']:
+    R[as_map[bone]] = process_tibia(joints[bone])
 
   return R
 
@@ -128,55 +129,31 @@ def draw_smpl_asf():
   draw_body(joints)
 
 
+def align_smpl(joints, smpl):
+  default_R = compute_default_R(joints, smpl.J)
+
+  rotate_R = np.empty([24, 3, 3])
+  sa_map = motion_parser.smpl_asf_map()
+  for k, v in sa_map.items():
+    rotate_R[k] = np.array(joints[v].matrix)
+    if joints[v].parent is not None:
+      rotate_R[k] = np.dot(rotate_R[k], np.array(np.linalg.inv(joints[v].parent.matrix)))
+  R = np.matmul(rotate_R, default_R)
+  pose = R_to_pose(R)
+  verts = smpl.set_params(pose=pose)
+  obj_save('./smpl.obj', verts, smpl.faces)
+
+
 if __name__ == '__main__':
   # TODO: check all .asf files to see if any unusal default pose
   # IMPORTANT:
   # in smpl, parent is responsible for the bones between parent and all children
   # in asf, child is responsible for the only bone between child and parent
 
-  draw_smpl_asf()
+  joints = motion_parser.parse_asf('./data/01/01.asf')
+  motions = motion_parser.parse_amc('./data/01/01_01.amc')
+  joints['root'].set_motion(motions[180], direction=np.array([-1, -1, -1]))
 
-  # smpl = smpl_np.SMPLModel('./model.pkl')
+  smpl = smpl_np.SMPLModel('./model.pkl')
 
-  # joints = motion_parser.parse_asf('./data/01/01.asf')
-  # default_R = compute_default_R(joints, smpl.J)
-
-  # frame_idx = 180
-
-
-  # # motions = motion_parser.parse_amc('./data/nopose.amc')
-  # # joints['root'].set_motion(motions[0])
-
-  # motions = motion_parser.parse_amc('./data/01/01_01.amc')
-  # joints['root'].set_motion(motions[frame_idx], direction=np.array([-1, -1, -1]))
-  # rotate_R = np.empty([24, 3, 3])
-  # sa_map = motion_parser.smpl_asf_map()
-  # for k, v in sa_map.items():
-  #   rotate_R[k] = np.array(joints[v].matrix)
-  #   if joints[v].parent is not None:
-  #     rotate_R[k] = np.dot(rotate_R[k], np.array(np.linalg.inv(joints[v].parent.matrix)))
-
-
-  # R = np.matmul(rotate_R, default_R)
-
-  # # semantic = motion_parser.joint_semantic()
-  # # jindex = motion_parser.joint_index()
-
-
-
-  # # R = np.empty([24, 3, 3])
-  # # for i in range(24):
-  # #   R[i] = np.eye(3)
-  # # for k, v in semantic.items():
-  # #   if joints[v].parent is not None:
-  # #     idx = jindex[joints[v].parent.name]
-  # #     R[idx] = joints[v].default_R
-
-  # # for k, v in semantic.items():
-  # #   R[k] = np.dot(R[k], np.array(joints[v].matrix))
-  # #   if joints[v].parent is not None:
-  # #     R[k] = np.dot(R[k], np.array(np.linalg.inv(joints[v].parent.matrix)))
-
-  # pose = R_to_pose(R)
-  # verts = smpl.set_params(pose=pose)
-  # obj_save('./smpl.obj', verts, smpl.faces)
+  align_smpl(joints, smpl)
