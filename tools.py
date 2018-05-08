@@ -110,70 +110,73 @@ def R_to_pose(R):
   return pose
 
 
+def draw_smpl_asf():
+  joints = motion_parser.parse_asf('./data/01/01.asf')
+  motions = motion_parser.parse_amc('./data/nopose.amc')
+  joints['root'].set_motion(motions[0])
+
+  smpl = smpl_np.SMPLModel('./model.pkl')
+  J = smpl.J + np.array([0, 0, 1.5])
+  joints_new = motion_parser.parse_asf('./data/01/01.asf')
+  set_to_smpl(joints_new, J)
+
+  for k, v in joints_new.items():
+    joints[k + '_'] = v
+
+  motions = motion_parser.parse_amc('./data/nopose.amc')
+  joints['root'].set_motion(motions[0])
+  draw_body(joints)
+
+
 if __name__ == '__main__':
   # TODO: check all .asf files to see if any unusal default pose
   # IMPORTANT:
   # in smpl, parent is responsible for the bones between parent and all children
   # in asf, child is responsible for the only bone between child and parent
 
-  smpl = smpl_np.SMPLModel('./model.pkl')
+  draw_smpl_asf()
 
-  joints = motion_parser.parse_asf('./data/01/01.asf')
-  default_R = compute_default_R(joints, smpl.J)
+  # smpl = smpl_np.SMPLModel('./model.pkl')
 
-  frame_idx = 180
+  # joints = motion_parser.parse_asf('./data/01/01.asf')
+  # default_R = compute_default_R(joints, smpl.J)
 
-
-  # motions = motion_parser.parse_amc('./data/nopose.amc')
-  # joints['root'].set_motion(motions[0])
-
-  motions = motion_parser.parse_amc('./data/01/01_01.amc')
-  joints['root'].set_motion(motions[frame_idx], direction=np.array([-1, -1, -1]))
-  rotate_R = np.empty([24, 3, 3])
-  sa_map = motion_parser.smpl_asf_map()
-  for k, v in sa_map.items():
-    rotate_R[k] = np.array(joints[v].matrix)
-    if joints[v].parent is not None:
-      rotate_R[k] = np.dot(rotate_R[k], np.array(np.linalg.inv(joints[v].parent.matrix)))
+  # frame_idx = 180
 
 
-  R = np.matmul(rotate_R, default_R)
-
-  # semantic = motion_parser.joint_semantic()
-  # jindex = motion_parser.joint_index()
-
-
-
-  # R = np.empty([24, 3, 3])
-  # for i in range(24):
-  #   R[i] = np.eye(3)
-  # for k, v in semantic.items():
-  #   if joints[v].parent is not None:
-  #     idx = jindex[joints[v].parent.name]
-  #     R[idx] = joints[v].default_R
-
-  # for k, v in semantic.items():
-  #   R[k] = np.dot(R[k], np.array(joints[v].matrix))
-  #   if joints[v].parent is not None:
-  #     R[k] = np.dot(R[k], np.array(np.linalg.inv(joints[v].parent.matrix)))
-
-  pose = R_to_pose(R)
-  verts = smpl.set_params(pose=pose)
-  obj_save('./smpl.obj', verts, smpl.faces)
+  # # motions = motion_parser.parse_amc('./data/nopose.amc')
+  # # joints['root'].set_motion(motions[0])
 
   # motions = motion_parser.parse_amc('./data/01/01_01.amc')
-  # joints['root'].set_motion(motions[frame_idx])
+  # joints['root'].set_motion(motions[frame_idx], direction=np.array([-1, -1, -1]))
+  # rotate_R = np.empty([24, 3, 3])
+  # sa_map = motion_parser.smpl_asf_map()
+  # for k, v in sa_map.items():
+  #   rotate_R[k] = np.array(joints[v].matrix)
+  #   if joints[v].parent is not None:
+  #     rotate_R[k] = np.dot(rotate_R[k], np.array(np.linalg.inv(joints[v].parent.matrix)))
 
-  # R = np.broadcast_to(np.expand_dims(np.eye(3), axis=0), (24, 3, 3))
-  # _, _, J = smpl.smpl_model('./model.pkl', R)
-  # J += np.array([0, 0, 1.5])
-  # joints_new = motion_parser.parse_asf('./data/01/01.asf')
-  # set_to_smpl(joints_new, J)
 
-  # for k, v in joints_new.items():
-  #   joints[k + '_'] = v
+  # R = np.matmul(rotate_R, default_R)
 
-  # motions = motion_parser.parse_amc('./data/nopose.amc')
-  # joints['root'].set_motion(motions[0])
-  # draw_body(joints)
+  # # semantic = motion_parser.joint_semantic()
+  # # jindex = motion_parser.joint_index()
 
+
+
+  # # R = np.empty([24, 3, 3])
+  # # for i in range(24):
+  # #   R[i] = np.eye(3)
+  # # for k, v in semantic.items():
+  # #   if joints[v].parent is not None:
+  # #     idx = jindex[joints[v].parent.name]
+  # #     R[idx] = joints[v].default_R
+
+  # # for k, v in semantic.items():
+  # #   R[k] = np.dot(R[k], np.array(joints[v].matrix))
+  # #   if joints[v].parent is not None:
+  # #     R[k] = np.dot(R[k], np.array(np.linalg.inv(joints[v].parent.matrix)))
+
+  # pose = R_to_pose(R)
+  # verts = smpl.set_params(pose=pose)
+  # obj_save('./smpl.obj', verts, smpl.faces)
