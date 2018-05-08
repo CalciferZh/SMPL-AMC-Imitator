@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import motion_parser
-import smpl_np as smpl
+import smpl_np
 import copy
 import transforms3d
 from mpl_toolkits.mplot3d import Axes3D
@@ -14,12 +14,27 @@ def compute_rodrigues(x, y):
 
 
 def process_femur(femur):
-  child_joint = femur
-  parent_joint = child_joint.parent
-  smpl_direction = child_joint.coordinate - parent_joint.coordinate
+  hipjoint = femur.parent
+  smpl_direction = femur.coordinate - hipjoint.coordinate
   smpl_direction /= np.linalg.norm(smpl_direction)
-  asf_direction = np.squeeze(np.array(child_joint.direction))
-  child_joint.default_R = compute_rodrigues(smpl_direction, asf_direction)
+  asf_direction = np.squeeze(np.array(femur.direction))
+  return compute_rodrigues(smpl_direction, asf_direction)
+
+
+def process_tibia(tibia):
+  femur = tibia.parent
+  hipjoint = femur.parent
+  smpl_femur_dir = femur.coordinate - hipjoint.coordinate
+  asf_femur_dir = np.squeeze(np.array(femur.direction))
+  smpl_tibia_dir = tibia.coordinate - femur.coordinate
+  asf_tibia_dir = np.squeeze(np.array(tibia.direction))
+  if not np.allclose(asf_femur_dir, asf_tibia_dir):
+    # this case shouldn't happend in CMU dataset
+    # so we just leave it here
+    print('error: femur and tibia are different!')
+    exit()
+
+  return compute_rodrigues(smpl_tibia_dir, smpl_femur_dir)
 
 
 def set_to_smpl(joints, smpl_J):
@@ -28,15 +43,19 @@ def set_to_smpl(joints, smpl_J):
     joints[v].coordinate = smpl_J[k] / 0.45 * 10
 
 
-def compute_default_R(joints):
-  '''Actually we only consider legs'''
-  R = np.broadcast_to(np.expand_dims(np.eye(3), axis=0), (24, 3, 3))
-  _, _, J = smpl.smpl_model('./model.pkl', R)
+def compute_default_R(joints, smpl_J):
+  '''Actually we only process legs, i.e. femur and tibia'''
+  R = np.stack([np.eye(3) for k in range(24)], axis=0)
+  set_to_smpl(joints, smpl_J)
+  as_map = motion_parser.asf_smpl_map()
 
-  set_to_smpl(joints, J)
+  for bone in ['lfemur', 'rfemur']:
+    R[as_map[bone]] = process_femur(joints[bone])
 
-  process_femur(joints['lfemur'])
-  process_femur(joints['rfemur'])
+  # for bone in ['ltibia', 'rtibia']:
+  #   R[as_map[bone]] = process_tibia(joints[bone])
+
+  return R
 
 
 def draw_body(joints):
@@ -82,42 +101,79 @@ def obj_save(path, vertices, faces=None):
         fp.write('f %d %d %d\n' % (f[0], f[1], f[2]))
 
 
+def R_to_pose(R):
+  pose = np.zeros([24, 3])
+  for idx, mat in enumerate(R):
+    axis, angle = transforms3d.axangles.mat2axangle(mat)
+    axangle = axis / np.linalg.norm(axis) * angle
+    pose[idx] = axangle
+  return pose
+
+
 if __name__ == '__main__':
+  # TODO: check all .asf files to see if any unusal default pose
+  # IMPORTANT:
+  # in smpl, parent is responsible for the bones between parent and all children
+  # in asf, child is responsible for the only bone between child and parent
+
+  smpl = smpl_np.SMPLModel('./model.pkl')
+
   joints = motion_parser.parse_asf('./data/01/01.asf')
-  compute_default_R(joints)
+  default_R = compute_default_R(joints, smpl.J)
 
-  motions = motion_parser.parse_amc('./data/nopose.amc')
-  # motions = motion_parser.parse_amc('./data/01/01_01.amc')
-  # joints['root'].set_motion(motions[0], direction=np.array([-1, -1, -1]))
-  joints['root'].set_motion(motions[0])
+  frame_idx = 180
 
-  semantic = motion_parser.joint_semantic()
-  jindex = motion_parser.joint_index()
 
-  R = np.broadcast_to(np.expand_dims(np.eye(3), axis=0), (24, 3, 3))
-  _, _, J = smpl.smpl_model('./model.pkl', R)
-  J += np.array([0, 0, 1.5])
-  joints_new = motion_parser.parse_asf('./data/01/01.asf')
-  set_to_smpl(joints_new, J)
+  # motions = motion_parser.parse_amc('./data/nopose.amc')
+  # joints['root'].set_motion(motions[0])
 
-  for k, v in joints_new.items():
-    joints[k + '_'] = v
-
-  draw_body(joints)
-
-  R = np.empty([24, 3, 3])
-  for i in range(24):
-    R[i] = np.eye(3)
-  for k, v in semantic.items():
+  motions = motion_parser.parse_amc('./data/01/01_01.amc')
+  joints['root'].set_motion(motions[frame_idx], direction=np.array([-1, -1, -1]))
+  rotate_R = np.empty([24, 3, 3])
+  sa_map = motion_parser.smpl_asf_map()
+  for k, v in sa_map.items():
+    rotate_R[k] = np.array(joints[v].matrix)
     if joints[v].parent is not None:
-      idx = jindex[joints[v].parent.name]
-      R[idx] = joints[v].default_R
+      rotate_R[k] = np.dot(rotate_R[k], np.array(np.linalg.inv(joints[v].parent.matrix)))
+
+
+  R = np.matmul(rotate_R, default_R)
+
+  # semantic = motion_parser.joint_semantic()
+  # jindex = motion_parser.joint_index()
+
+
+
+  # R = np.empty([24, 3, 3])
+  # for i in range(24):
+  #   R[i] = np.eye(3)
+  # for k, v in semantic.items():
+  #   if joints[v].parent is not None:
+  #     idx = jindex[joints[v].parent.name]
+  #     R[idx] = joints[v].default_R
 
   # for k, v in semantic.items():
   #   R[k] = np.dot(R[k], np.array(joints[v].matrix))
   #   if joints[v].parent is not None:
   #     R[k] = np.dot(R[k], np.array(np.linalg.inv(joints[v].parent.matrix)))
 
-  verts, faces, J = smpl.smpl_model('./model.pkl', R)
-  obj_save('./smpl.obj', verts, faces)
+  pose = R_to_pose(R)
+  verts = smpl.set_params(pose=pose)
+  obj_save('./smpl.obj', verts, smpl.faces)
+
+  # motions = motion_parser.parse_amc('./data/01/01_01.amc')
+  # joints['root'].set_motion(motions[frame_idx])
+
+  # R = np.broadcast_to(np.expand_dims(np.eye(3), axis=0), (24, 3, 3))
+  # _, _, J = smpl.smpl_model('./model.pkl', R)
+  # J += np.array([0, 0, 1.5])
+  # joints_new = motion_parser.parse_asf('./data/01/01.asf')
+  # set_to_smpl(joints_new, J)
+
+  # for k, v in joints_new.items():
+  #   joints[k + '_'] = v
+
+  # motions = motion_parser.parse_amc('./data/nopose.amc')
+  # joints['root'].set_motion(motions[0])
+  # draw_body(joints)
 

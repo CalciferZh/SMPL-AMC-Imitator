@@ -20,7 +20,6 @@ class Joint:
     self.children = []
     self.coordinate = None
     self.matrix = None
-    self.default_R = np.eye(3)
 
 
   def set_motion(self, motion, direction=np.ones(3)):
@@ -223,6 +222,7 @@ def parse_amc(file_path):
 
 
 def joint_semantic():
+  # only used for body-drawing
   ret = {
     0: 'root',
     1: 'lhipjoint',
@@ -250,6 +250,73 @@ def joint_semantic():
     23: 'rhand'
   }
   return ret
+
+# def joint_semantic():
+#   ret = {
+#     0: 'root',
+#     1: 'llegroot',
+#     2: 'rlegroot',
+#     3: 'lowerback',
+#     4: 'lknee',
+#     5: 'rknee',
+#     6: 'upperback',
+#     7: 'lankle',
+#     8: 'rankle',
+#     9: 'thorax',
+#     10: 'ltoes',
+#     11: 'rtoes',
+#     12: 'lowerneck',
+#     13: 'lclavicle',
+#     14: 'rclavicle',
+#     15: 'upperneck',
+#     16: 'larmroot',
+#     17: 'rarmroot',
+#     18: 'lelbow',
+#     19: 'relbow',
+#     20: 'lwrist',
+#     21: 'rwrist',
+#     22: 'lhand',
+#     23: 'rhand'
+#   }
+#   return ret
+
+
+def smpl_asf_map():
+  ret = {
+    0: 'root',
+    1: 'lfemur',
+    2: 'rfemur',
+    3: 'upperback',
+    4: 'ltibia',
+    5: 'rtibia',
+    6: 'thorax',
+    7: 'lfoot',
+    8: 'rfoot',
+    9: 'lowerneck',
+    10: 'ltoes',
+    11: 'rtoes',
+    12: 'upperneck',
+    13: 'lclavicle',
+    14: 'rclavicle',
+    15: 'head',
+    16: 'lhumerus',
+    17: 'rhumerus',
+    18: 'lradius',
+    19: 'rradius',
+    20: 'lwrist',
+    21: 'rwrist',
+    22: 'lhand',
+    23: 'rhand'
+  }
+  return ret
+
+
+def asf_smpl_map():
+  sa_map = smpl_asf_map()
+  index = {}
+  for k, v in sa_map.items():
+    index[v] = k
+  return index
 
 
 def joint_index():
