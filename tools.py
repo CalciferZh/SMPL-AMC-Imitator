@@ -139,7 +139,7 @@ def align_smpl(joints, smpl):
     if joints[v].parent is not None:
       rotate_R[k] = np.dot(np.array(np.linalg.inv(joints[v].parent.matrix)), rotate_R[k])
   R = np.matmul(rotate_R, default_R)
-  pose = R_to_pose(default_R)
+  pose = R_to_pose(R)
   verts = smpl.set_params(pose=pose)
   obj_save('./smpl.obj', verts, smpl.faces)
 
@@ -147,9 +147,16 @@ def align_smpl(joints, smpl):
 def align_smpl_wrapper():
   joints = motion_parser.parse_asf('./data/01/01.asf')
   motions = motion_parser.parse_amc('./data/01/01_01.amc')
-  joints['root'].set_motion(motions[180], direction=np.array([-1, -1, -1]))
+  joints['root'].set_motion(motions[180])
   smpl = smpl_np.SMPLModel('./model.pkl')
   align_smpl(joints, smpl)
+
+
+def draw_joints_in_motion_wrapper():
+  joints = motion_parser.parse_asf('./data/01/01.asf')
+  motions = motion_parser.parse_amc('./data/01/01_01.amc')
+  joints['root'].set_motion(motions[180])
+  draw_body(joints)
 
 
 if __name__ == '__main__':
@@ -160,9 +167,6 @@ if __name__ == '__main__':
 
   # align_smpl_wrapper()
   # draw_smpl_asf()
+  draw_joints_in_motion_wrapper()
 
-  joints = motion_parser.parse_asf('./data/01/01.asf')
-  motions = motion_parser.parse_amc('./data/01/01_01.amc')
-  joints['root'].set_motion(motions[180], direction=np.array([1, 1, 1]))
-  draw_body(joints)
 

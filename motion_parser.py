@@ -24,11 +24,11 @@ class Joint:
     self.coordinate = None
     self.matrix = None
 
-  def set_motion(self, motion, direction=np.ones(3)):
+  def set_motion(self, motion):
     if self.name == 'root':
-      # self.coordinate = np.array(motion['root'][:3])
+      self.coordinate = np.array(motion['root'][:3])
       self.coordinate = np.zeros(3)
-      motion['root'] = motion['root'][3:] * direction
+      motion['root'] = motion['root'][3:]
       rotation = np.deg2rad(motion[self.name])
       self.matrix = self.C * np.matrix(transforms3d.euler.euler2mat(*rotation)) * self.Cinv
     else:
@@ -39,12 +39,11 @@ class Joint:
         if not np.array_equal(lm, np.zeros(2)):
           rotation[axis] = motion[self.name][idx]
           idx += 1
-      rotation *= direction
       rotation = np.deg2rad(rotation)
       self.matrix = self.parent.matrix * self.C * np.matrix(transforms3d.euler.euler2mat(*rotation)) * self.Cinv
       self.coordinate = np.squeeze(np.array(np.reshape(self.parent.coordinate, [3, 1]) + self.length * self.matrix * np.reshape(self.direction, [3, 1])))
     for child in self.children:
-      child.set_motion(motion, direction)
+      child.set_motion(motion)
 
   def to_dict(self):
     ret = {self.name: self}
