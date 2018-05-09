@@ -131,15 +131,15 @@ def draw_smpl_asf():
 
 def align_smpl(joints, smpl):
   default_R = compute_default_R(joints, smpl.J)
-
   rotate_R = np.empty([24, 3, 3])
+
   sa_map = motion_parser.smpl_asf_map()
   for k, v in sa_map.items():
     rotate_R[k] = np.array(joints[v].matrix)
     if joints[v].parent is not None:
-      rotate_R[k] = np.dot(rotate_R[k], np.array(np.linalg.inv(joints[v].parent.matrix)))
+      rotate_R[k] = np.dot(np.array(np.linalg.inv(joints[v].parent.matrix)), rotate_R[k])
   R = np.matmul(rotate_R, default_R)
-  pose = R_to_pose(R)
+  pose = R_to_pose(default_R)
   verts = smpl.set_params(pose=pose)
   obj_save('./smpl.obj', verts, smpl.faces)
 
@@ -158,5 +158,11 @@ if __name__ == '__main__':
   # in smpl, parent is responsible for the bones between parent and all children
   # in asf, child is responsible for the only bone between child and parent
 
-  align_smpl_wrapper()
+  # align_smpl_wrapper()
+  # draw_smpl_asf()
+
+  joints = motion_parser.parse_asf('./data/01/01.asf')
+  motions = motion_parser.parse_amc('./data/01/01_01.amc')
+  joints['root'].set_motion(motions[180], direction=np.array([1, 1, 1]))
+  draw_body(joints)
 

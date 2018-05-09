@@ -1,4 +1,5 @@
 import numpy as np
+import transforms3d
 
 
 class Joint:
@@ -6,7 +7,9 @@ class Joint:
     self.name = name
     self.direction = np.matrix(direction)
     self.length = length
-    self.C, self.Cinv = rotation_matrix_axis(axis)
+    axis = np.deg2rad(axis)
+    self.C = np.matrix(transforms3d.euler.euler2mat(*axis))
+    self.Cinv = np.linalg.inv(self.C)
     self.limits = np.zeros([3, 2])
     self.movable = len(dof) == 0
     for lm, nm in zip(limits, dof):
@@ -21,12 +24,13 @@ class Joint:
     self.coordinate = None
     self.matrix = None
 
-
   def set_motion(self, motion, direction=np.ones(3)):
     if self.name == 'root':
-      self.coordinate = np.array(motion['root'][:3])
+      # self.coordinate = np.array(motion['root'][:3])
+      self.coordinate = np.zeros(3)
       motion['root'] = motion['root'][3:] * direction
-      self.matrix = rotation_matrix(self.C, self.Cinv, motion[self.name])
+      rotation = np.deg2rad(motion[self.name])
+      self.matrix = self.C * np.matrix(transforms3d.euler.euler2mat(*rotation)) * self.Cinv
     else:
       # set rx ry rz according to degree of freedom
       idx = 0
@@ -36,8 +40,9 @@ class Joint:
           rotation[axis] = motion[self.name][idx]
           idx += 1
       rotation *= direction
-      self.matrix = rotation_matrix(self.C, self.Cinv, rotation) * self.parent.matrix
-      self.coordinate = np.squeeze(np.array(self.parent.coordinate + self.length * self.direction * self.matrix))
+      rotation = np.deg2rad(rotation)
+      self.matrix = self.parent.matrix * self.C * np.matrix(transforms3d.euler.euler2mat(*rotation)) * self.Cinv
+      self.coordinate = np.squeeze(np.array(np.reshape(self.parent.coordinate, [3, 1]) + self.length * self.matrix * np.reshape(self.direction, [3, 1])))
     for child in self.children:
       child.set_motion(motion, direction)
 
@@ -55,51 +60,6 @@ class Joint:
     print('limits:', self.limits)
     print('parent:', self.parent)
     print('children:', self.children)
-
-
-def rotation_matrix_axis(axis):
-    # Change coordinate system through matrix C
-  rx = np.deg2rad(float(axis[0]))
-  ry = np.deg2rad(float(axis[1]))
-  rz = np.deg2rad(float(axis[2]))
-
-  Cx = np.matrix([[1, 0, 0],
-                  [0, np.cos(rx), np.sin(rx)],
-                  [0, -np.sin(rx), np.cos(rx)]])
-
-  Cy = np.matrix([[np.cos(ry), 0, -np.sin(ry)],
-                  [0, 1, 0],
-                  [np.sin(ry), 0, np.cos(ry)]])
-
-  Cz = np.matrix([[np.cos(rz), np.sin(rz), 0],
-                  [-np.sin(rz), np.cos(rz), 0],
-                  [0, 0, 1]])
-
-  C = Cx * Cy * Cz
-  Cinv = np.linalg.inv(C)
-  return C, Cinv
-
-
-def rotation_matrix(C, Cinv, motion):
-    # Construct rotation matrix M
-    tx = np.deg2rad(motion[0])
-    ty = np.deg2rad(motion[1])
-    tz = np.deg2rad(motion[2])
-
-    Mx = np.matrix([[1, 0, 0],
-                    [0, np.cos(tx), np.sin(tx)],
-                    [0, -np.sin(tx), np.cos(tx)]])
-
-    My = np.matrix([[np.cos(ty), 0, -np.sin(ty)],
-                    [0, 1, 0],
-                    [np.sin(ty), 0, np.cos(ty)]])
-
-    Mz = np.matrix([[np.cos(tz), np.sin(tz), 0],
-                    [-np.sin(tz), np.cos(tz), 0],
-                    [0, 0, 1]])
-    M = Mx * My * Mz
-    L = Cinv * M * C
-    return L
 
 
 def read_line(stream, idx):

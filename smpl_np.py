@@ -51,23 +51,23 @@ class SMPLModel():
         pose_cube = self.pose.reshape((-1, 1, 3))
         self.R = self.rodrigues(pose_cube)
         v_posed = v_shaped
-        results = np.empty((self.kintree_table.shape[1], 4, 4))
-        results[0, :, :] = self.with_zeros(np.hstack((self.R[0], self.J[0, :].reshape([3, 1]))))
+        G = np.empty((self.kintree_table.shape[1], 4, 4))
+        G[0, :, :] = self.with_zeros(np.hstack((self.R[0], self.J[0, :].reshape([3, 1]))))
         for i in range(1, self.kintree_table.shape[1]):
-            results[i, :, :] = results[self.parent[i], :, :].dot(
+            G[i, :, :] = G[self.parent[i], :, :].dot(
                 self.with_zeros(
                     np.hstack(
                         [self.R[i], ((self.J[i, :] - self.J[self.parent[i], :]).reshape([3, 1]))]
                     )
                 )
             )
-        results = results - self.pack(
+        G = G - self.pack(
             np.matmul(
-                results,
+                G,
                 np.hstack([self.J, np.zeros([24, 1])]).reshape([24, 4, 1])
                 )
             )
-        T = np.tensordot(self.weights, results, axes=[[1], [0]])
+        T = np.tensordot(self.weights, G, axes=[[1], [0]])
         rest_shape_h = np.hstack((v_posed, np.ones([v_posed.shape[0], 1])))
         v = np.matmul(T, rest_shape_h.reshape([-1, 4, 1])).reshape([-1, 4])[:, :3]
         self.verts = v + self.trans.reshape([1, 3])
