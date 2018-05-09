@@ -144,16 +144,19 @@ def align_smpl(joints, smpl):
   obj_save('./smpl.obj', verts, smpl.faces)
 
 
+def align_smpl_wrapper():
+  joints = motion_parser.parse_asf('./data/01/01.asf')
+  motions = motion_parser.parse_amc('./data/01/01_01.amc')
+  joints['root'].set_motion(motions[180], direction=np.array([-1, -1, -1]))
+  smpl = smpl_np.SMPLModel('./model.pkl')
+  align_smpl(joints, smpl)
+
+
 if __name__ == '__main__':
   # TODO: check all .asf files to see if any unusal default pose
   # IMPORTANT:
   # in smpl, parent is responsible for the bones between parent and all children
   # in asf, child is responsible for the only bone between child and parent
 
-  joints = motion_parser.parse_asf('./data/01/01.asf')
-  motions = motion_parser.parse_amc('./data/01/01_01.amc')
-  joints['root'].set_motion(motions[180], direction=np.array([-1, -1, -1]))
+  align_smpl_wrapper()
 
-  smpl = smpl_np.SMPLModel('./model.pkl')
-
-  align_smpl(joints, smpl)
