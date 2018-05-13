@@ -38,16 +38,34 @@ def process_tibia(tibia):
   return compute_rodrigues(smpl_tibia_dir, smpl_femur_dir)
 
 
-def set_to_smpl(joints, smpl_J):
+def set_to_smpl_joints(joints, smpl_J):
   semantic = motion_parser.joint_semantic()
   for k, v in semantic.items():
     joints[v].coordinate = smpl_J[k] / 0.45 * 10
 
 
+def set_to_smpl_skeleton(joints, smpl):
+  to_del = []
+  for k in joints.keys():
+    if k not in motion_parser.joint_semantic().values():
+      to_del.append(k)
+  for k in to_del:
+    joints[k].parent.children.remove(joints[k])
+    del joints[k]
+  set_to_smpl_joints(joints, smpl.J)
+
+  for k, v in joints.items():
+    if k == 'root':
+      continue
+    joints[k].direction = v.coordinate - v.parent.coordinate
+    joints[k].length = np.linalg.norm(joints[k].direction)
+    joints[k].direction /= joints[k].length
+
+
 def compute_default_R(joints, smpl_J):
   '''Actually we only process legs, i.e. femur and tibia'''
   R = np.stack([np.eye(3) for k in range(24)], axis=0)
-  set_to_smpl(joints, smpl_J)
+  set_to_smpl_joints(joints, smpl_J)
   as_map = motion_parser.asf_smpl_map()
 
   for bone in ['lfemur', 'rfemur']:
@@ -111,22 +129,30 @@ def R_to_pose(R):
   return pose
 
 
+def combine_skeletons(roots, interval=30):
+  joints = {}
+  for idx, root in enumerate(roots):
+    for k, v in root.to_dict().items():
+      v.coordinate[2] += interval * idx
+      joints['%s_%d' % (k, idx)] = v
+  return joints
+
+
 def draw_smpl_asf():
-  joints = motion_parser.parse_asf('./data/01/01.asf')
-  motions = motion_parser.parse_amc('./data/nopose.amc')
-  joints['root'].set_motion(motions[0])
-
+  asf_joints = motion_parser.parse_asf('./data/01/01.asf')
+  smpl_joints = motion_parser.parse_asf('./data/01/01.asf')
+  # no_pose = motion_parser.parse_amc('./data/nopose.amc')[0]
+  motions = motion_parser.parse_amc('./data/01/01_01.amc')
   smpl = smpl_np.SMPLModel('./model.pkl')
-  J = smpl.J + np.array([0, 0, 1.5])
-  joints_new = motion_parser.parse_asf('./data/01/01.asf')
-  set_to_smpl(joints_new, J)
 
-  for k, v in joints_new.items():
-    joints[k + '_'] = v
+  set_to_smpl_skeleton(smpl_joints, smpl)
 
-  motions = motion_parser.parse_amc('./data/nopose.amc')
-  joints['root'].set_motion(motions[0])
-  draw_body(joints)
+  frame_idx = 180
+  asf_joints['root'].set_motion(motions[frame_idx])
+  smpl_joints['root'].set_motion(motions[frame_idx])
+
+  combined = combine_skeletons([asf_joints['root'], smpl_joints['root']])
+  draw_body(combined)
 
 
 def align_smpl(joints, smpl):
@@ -152,7 +178,7 @@ def align_smpl_wrapper():
   align_smpl(joints, smpl)
 
 
-def draw_joints_in_motion_wrapper():
+def draw_asf_joints_in_motion_wrapper():
   joints = motion_parser.parse_asf('./data/01/01.asf')
   motions = motion_parser.parse_amc('./data/01/01_01.amc')
   joints['root'].set_motion(motions[180])
@@ -166,7 +192,5 @@ if __name__ == '__main__':
   # in asf, child is responsible for the only bone between child and parent
 
   # align_smpl_wrapper()
-  # draw_smpl_asf()
-  draw_joints_in_motion_wrapper()
-
-
+  draw_smpl_asf()
+  # draw_joints_in_motion_wrapper()

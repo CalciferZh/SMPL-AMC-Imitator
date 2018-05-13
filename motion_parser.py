@@ -28,8 +28,7 @@ class Joint:
     if self.name == 'root':
       self.coordinate = np.array(motion['root'][:3])
       self.coordinate = np.zeros(3)
-      motion['root'] = motion['root'][3:]
-      rotation = np.deg2rad(motion[self.name])
+      rotation = np.deg2rad(motion['root'][3:])
       self.matrix = self.C * np.matrix(transforms3d.euler.euler2mat(*rotation)) * self.Cinv
     else:
       # set rx ry rz according to degree of freedom
