@@ -77,7 +77,7 @@ def compute_default_R(joints, smpl_J):
   return R
 
 
-def draw_body(joints):
+def draw_body(joints, xr=(-20, 40), yr=(-10, 50), zr=(-40, 20)):
   fig = plt.figure()
   ax = Axes3D(fig)
 
@@ -85,9 +85,9 @@ def draw_body(joints):
   # ax.set_ylim3d(0, 30)
   # ax.set_zlim3d(0, 30)
 
-  ax.set_xlim3d(-20, 40)
-  ax.set_ylim3d(-30, 30)
-  ax.set_zlim3d(-40, 20)
+  ax.set_xlim3d(*xr)
+  ax.set_ylim3d(*yr)
+  ax.set_zlim3d(*zr)
 
   xs, ys, zs = [], [], []
   for joint in joints.values():
@@ -129,11 +129,15 @@ def R_to_pose(R):
   return pose
 
 
-def combine_skeletons(roots, interval=30):
+def move_skeleton(joints, distance):
+  for j in joints.values():
+    j.coordinate += distance
+
+
+def combine_skeletons(roots):
   joints = {}
   for idx, root in enumerate(roots):
     for k, v in root.to_dict().items():
-      v.coordinate[2] += interval * idx
       joints['%s_%d' % (k, idx)] = v
   return joints
 
@@ -141,7 +145,6 @@ def combine_skeletons(roots, interval=30):
 def draw_smpl_asf():
   asf_joints = motion_parser.parse_asf('./data/01/01.asf')
   smpl_joints = motion_parser.parse_asf('./data/01/01.asf')
-  # no_pose = motion_parser.parse_amc('./data/nopose.amc')[0]
   motions = motion_parser.parse_amc('./data/01/01_01.amc')
   smpl = smpl_np.SMPLModel('./model.pkl')
 
@@ -150,9 +153,35 @@ def draw_smpl_asf():
   frame_idx = 180
   asf_joints['root'].set_motion(motions[frame_idx])
   smpl_joints['root'].set_motion(motions[frame_idx])
+  move_skeleton(smpl_joints, np.array([0, 0, 30]))
 
-  combined = combine_skeletons([asf_joints['root'], smpl_joints['root']])
+  no_pose = motion_parser.parse_amc('./data/nopose.amc')[0]
+  asf_joints_nopose = motion_parser.parse_asf('./data/01/01.asf')
+  smpl_joints_nopose = motion_parser.parse_asf('./data/01/01.asf')
+  asf_joints_nopose['root'].set_motion(no_pose)
+  smpl_joints_nopose['root'].set_motion(no_pose)
+  set_to_smpl_skeleton(smpl_joints_nopose, smpl)
+  move_skeleton(asf_joints_nopose, np.array([30, 0, 0]))
+  move_skeleton(smpl_joints_nopose, np.array([30, 0, 30]))
+
+  combined = combine_skeletons(
+    [asf_joints['root'], asf_joints_nopose['root'], smpl_joints['root'], smpl_joints_nopose['root']]
+  )
+
   draw_body(combined)
+
+
+def extract_R_from_asf_joints(joints, smpl):
+  default_R = compute_default_R(joints, smpl.J)
+  rotate_R = np.empty([24, 3, 3])
+
+  sa_map = motion_parser.smpl_asf_map()
+  for k, v in sa_map.items():
+    rotate_R[k] = np.array(joints[v].matrix)
+    if joints[v].parent is not None:
+      rotate_R[k] = np.dot(np.array(np.linalg.inv(joints[v].parent.matrix)), rotate_R[k])
+  R = np.matmul(rotate_R, default_R)
+  return R
 
 
 def align_smpl(joints, smpl):
@@ -185,12 +214,36 @@ def draw_asf_joints_in_motion_wrapper():
   draw_body(joints)
 
 
-if __name__ == '__main__':
-  # TODO: check all .asf files to see if any unusal default pose
-  # IMPORTANT:
-  # in smpl, parent is responsible for the bones between parent and all children
-  # in asf, child is responsible for the only bone between child and parent
+def setup_smpl_joints(smpl):
+  joints = {}
+  for i in range(24):
+    joints[i] = motion_parser.SMPLJoints(i)
+  for child, parent in smpl.parent.items():
+    joints[child].parent = joints[parent]
+    joints[parent].children.append(joints[child])
+  J = smpl.J / 0.45 * 10
+  for j in joints.values():
+    j.coordinate = J[j.idx]
+  for j in joints.values():
+    j.update_info()
+  return joints
 
+
+def smpl_joints_test():
+  asf_joints = motion_parser.parse_asf('./data/01/01.asf')
+  motions = motion_parser.parse_amc('./data/01/01_01.amc')
+  asf_joints['root'].set_motion(motions[180])
+
+  smpl = smpl_np.SMPLModel('./model.pkl')
+  smpl_joints = setup_smpl_joints(smpl)
+  R = extract_R_from_asf_joints(asf_joints, smpl)
+  smpl_joints[0].set_motion(R)
+
+  draw_body(smpl_joints)
+
+
+if __name__ == '__main__':
   # align_smpl_wrapper()
-  draw_smpl_asf()
+  # draw_smpl_asf()
   # draw_joints_in_motion_wrapper()
+  smpl_joints_test()

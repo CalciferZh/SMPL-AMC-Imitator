@@ -209,35 +209,6 @@ def joint_semantic():
   }
   return ret
 
-# def joint_semantic():
-#   ret = {
-#     0: 'root',
-#     1: 'llegroot',
-#     2: 'rlegroot',
-#     3: 'lowerback',
-#     4: 'lknee',
-#     5: 'rknee',
-#     6: 'upperback',
-#     7: 'lankle',
-#     8: 'rankle',
-#     9: 'thorax',
-#     10: 'ltoes',
-#     11: 'rtoes',
-#     12: 'lowerneck',
-#     13: 'lclavicle',
-#     14: 'rclavicle',
-#     15: 'upperneck',
-#     16: 'larmroot',
-#     17: 'rarmroot',
-#     18: 'lelbow',
-#     19: 'relbow',
-#     20: 'lwrist',
-#     21: 'rwrist',
-#     22: 'lhand',
-#     23: 'rhand'
-#   }
-#   return ret
-
 
 def smpl_asf_map():
   ret = {
@@ -283,3 +254,25 @@ def joint_index():
   for k, v in semantic.items():
     index[v] = k
   return index
+
+
+class SMPLJoints:
+  def __init__(self, idx):
+    self.idx = idx
+    self.to_parent = None
+    self.parent = None
+    self.coordinate = None
+    self.matrix = None
+    self.children = []
+
+  def update_info(self):
+    if self.parent is not None:
+      self.to_parent = self.coordinate - self.parent.coordinate
+
+  def set_motion(self, R):
+    if self.parent is not None:
+      self.coordinate = self.parent.coordinate + np.squeeze(np.dot(self.parent.matrix, np.reshape(self.to_parent, [3,1])))
+    self.matrix = R[self.idx]
+    for child in self.children:
+      child.set_motion(R)
+
