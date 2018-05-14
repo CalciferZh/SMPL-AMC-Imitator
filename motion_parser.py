@@ -272,7 +272,14 @@ class SMPLJoints:
   def set_motion(self, R):
     if self.parent is not None:
       self.coordinate = self.parent.coordinate + np.squeeze(np.dot(self.parent.matrix, np.reshape(self.to_parent, [3,1])))
-    self.matrix = R[self.idx]
+      self.matrix = np.dot(self.parent.matrix, R[self.idx])
+    else:
+      self.matrix = R[self.idx]
     for child in self.children:
       child.set_motion(R)
 
+  def to_dict(self):
+    ret = {self.idx: self}
+    for child in self.children:
+      ret.update(child.to_dict())
+    return ret

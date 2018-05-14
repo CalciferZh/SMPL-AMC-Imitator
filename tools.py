@@ -181,6 +181,7 @@ def extract_R_from_asf_joints(joints, smpl):
     if joints[v].parent is not None:
       rotate_R[k] = np.dot(np.array(np.linalg.inv(joints[v].parent.matrix)), rotate_R[k])
   R = np.matmul(rotate_R, default_R)
+  # R = default_R
   return R
 
 
@@ -239,7 +240,12 @@ def smpl_joints_test():
   R = extract_R_from_asf_joints(asf_joints, smpl)
   smpl_joints[0].set_motion(R)
 
-  draw_body(smpl_joints)
+  smpl_joints_nopose = setup_smpl_joints(smpl)
+  move_skeleton(smpl_joints_nopose, np.array([30, 0, 30]))
+
+  combined = combine_skeletons([smpl_joints[0], smpl_joints_nopose[0]])
+
+  draw_body(combined)
 
 
 if __name__ == '__main__':
