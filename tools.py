@@ -64,6 +64,7 @@ def set_to_smpl_skeleton(joints, smpl):
 
 def compute_default_R(joints, smpl_J):
   '''Actually we only process legs, i.e. femur and tibia'''
+  joints = copy.deepcopy(joints)
   R = np.stack([np.eye(3) for k in range(24)], axis=0)
   set_to_smpl_joints(joints, smpl_J)
   as_map = motion_parser.asf_smpl_map()
@@ -143,32 +144,35 @@ def combine_skeletons(roots):
 
 
 def draw_smpl_asf():
-  asf_joints = motion_parser.parse_asf('./data/01/01.asf')
-  smpl_joints = motion_parser.parse_asf('./data/01/01.asf')
   motions = motion_parser.parse_amc('./data/01/01_01.amc')
-  smpl = smpl_np.SMPLModel('./model.pkl')
-
-  set_to_smpl_skeleton(smpl_joints, smpl)
-
   frame_idx = 180
-  asf_joints['root'].set_motion(motions[frame_idx])
-  smpl_joints['root'].set_motion(motions[frame_idx])
-  move_skeleton(smpl_joints, np.array([0, 0, 30]))
 
   no_pose = motion_parser.parse_amc('./data/nopose.amc')[0]
+
+  asf_joints = motion_parser.parse_asf('./data/01/01.asf')
+  asf_joints['root'].set_motion(motions[frame_idx])
+
   asf_joints_nopose = motion_parser.parse_asf('./data/01/01.asf')
-  smpl_joints_nopose = motion_parser.parse_asf('./data/01/01.asf')
   asf_joints_nopose['root'].set_motion(no_pose)
-  smpl_joints_nopose['root'].set_motion(no_pose)
-  set_to_smpl_skeleton(smpl_joints_nopose, smpl)
-  move_skeleton(asf_joints_nopose, np.array([30, 0, 0]))
-  move_skeleton(smpl_joints_nopose, np.array([30, 0, 30]))
+  move_skeleton(asf_joints_nopose, np.array([0, 0, -30]))
+
+  smpl = smpl_np.SMPLModel('./model.pkl')
+
+  smpl_joints = setup_smpl_joints(smpl)
+  R = extract_R_from_asf_joints(asf_joints, smpl)
+  smpl_joints[0].set_motion(R)
+  move_skeleton(smpl_joints, np.array([40, 0, 0]))
+
+  smpl_joints_nopose = setup_smpl_joints(smpl)
+  R = extract_R_from_asf_joints(asf_joints_nopose, smpl)
+  smpl_joints_nopose[0].set_motion(R)
+  move_skeleton(smpl_joints_nopose, np.array([40, 0, -30]))
 
   combined = combine_skeletons(
-    [asf_joints['root'], asf_joints_nopose['root'], smpl_joints['root'], smpl_joints_nopose['root']]
+    [asf_joints['root'], asf_joints_nopose['root'], smpl_joints[0], smpl_joints_nopose[0]]
   )
 
-  draw_body(combined)
+  draw_body(combined, xr=(20, -40), yr=(-20, 60))
 
 
 def extract_R_from_asf_joints(joints, smpl):
@@ -250,6 +254,6 @@ def smpl_joints_test():
 
 if __name__ == '__main__':
   # align_smpl_wrapper()
-  # draw_smpl_asf()
+  draw_smpl_asf()
   # draw_joints_in_motion_wrapper()
-  smpl_joints_test()
+  # smpl_joints_test()
