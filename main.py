@@ -35,20 +35,6 @@ if __name__ == '__main__':
   # test()
   main()
 
-# def process_femur(asf_joint, smpl_joint):
-#   femur = asf_joint
-#   hipjoint = femur.parent
-#   smpl_direction = smpl_joint.to_parent
-#   smpl_direction /= np.linalg.norm(smpl_direction)
-#   asf_direction = np.squeeze(np.array(femur.direction))
-#   print('************************************')
-#   print(smpl_direction)
-#   print(asf_direction)
-#   print(compute_rodrigues(smpl_direction, asf_direction))
-#   print('************************************')
-#   return compute_rodrigues(smpl_direction, asf_direction)
-
-
 # def process_tibia(tibia):
 #   femur = tibia.parent
 #   hipjoint = femur.parent
