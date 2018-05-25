@@ -103,16 +103,17 @@ class Joint:
         self.limits[2] = lm
     self.parent = None
     self.children = []
-    self.coordinate = None
+    # bone's far end's cooridnate
+    # near end is parent's end_coord
+    self.end_coord = None
     self.matrix = None
 
   def set_motion(self, motion):
     if self.name == 'root':
-      self.coordinate = np.array(motion['root'][:3])
-      self.coordinate = np.zeros(3)
+      self.end_coord = np.array(motion['root'][:3])
+      self.end_coord = np.zeros(3)
       rotation = np.deg2rad(motion['root'][3:])
-      self.matrix = self.C * \
-          np.matrix(transforms3d.euler.euler2mat(*rotation)) * self.Cinv
+      self.matrix = self.C * np.matrix(transforms3d.euler.euler2mat(*rotation)) * self.Cinv
     else:
       # set rx ry rz according to degree of freedom
       idx = 0
@@ -124,7 +125,7 @@ class Joint:
       rotation = np.deg2rad(rotation)
       self.matrix = self.parent.matrix * self.C * \
           np.matrix(transforms3d.euler.euler2mat(*rotation)) * self.Cinv
-      self.coordinate = np.squeeze(np.array(np.reshape(self.parent.coordinate, [3, 1]) + self.length * self.matrix * np.reshape(self.direction, [3, 1])))
+      self.end_coord = np.squeeze(np.array(np.reshape(self.parent.end_coord, [3, 1]) + self.length * self.matrix * np.reshape(self.direction, [3, 1])))
 
       if self.name == 'ltibia':
         print('================== ASF ltibia =================')
@@ -138,6 +139,14 @@ class Joint:
     for child in self.children:
       ret.update(child.to_dict())
     return ret
+
+  def reset_pose(self):
+    if self.name == 'root':
+      self.end_coord = np.zeros(3)
+    else:
+      self.end_coord = self.parent.end_coord + self.length * self.direction
+    for child in self.children:
+      child.reset_pose()
 
   def pretty_print(self):
     print('===================================')
@@ -158,7 +167,7 @@ class SMPLJoints:
     self.matrix = None
     self.children = []
 
-  def update_info(self):
+  def init_bone(self):
     if self.parent is not None:
       self.to_parent = self.coordinate - self.parent.coordinate
 
@@ -175,8 +184,7 @@ class SMPLJoints:
       print('====================== SMPL =====================')
       print(self.to_parent / np.linalg.norm(self.to_parent))
       print(self.matrix)
-      print(np.squeeze(np.dot(self.parent.matrix,
-                              np.reshape(self.to_parent, [3, 1]))))
+      print(np.squeeze(np.dot(self.parent.matrix, np.reshape(self.to_parent, [3, 1]))))
 
     for child in self.children:
       child.set_motion(R)
