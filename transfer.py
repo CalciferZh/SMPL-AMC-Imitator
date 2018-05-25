@@ -1,4 +1,4 @@
-from skeleton import *
+from skeleton import asf_smpl_map
 from mathtool import *
 
 

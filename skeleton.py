@@ -145,6 +145,7 @@ class Joint:
       self.coordinate = np.zeros(3)
     else:
       self.coordinate = self.parent.coordinate + self.length * np.squeeze(np.array(self.direction))
+    self.matrix = np.matrix(np.eye(3))
     for child in self.children:
       child.reset_pose()
 
