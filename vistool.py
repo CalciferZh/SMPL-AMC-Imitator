@@ -1,16 +1,18 @@
 import matplotlib.pyplot as plt
+import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 
 
 def move_skeleton(joints, distance):
+  distance = np.array(distance)
   for j in joints.values():
     j.coordinate += distance
 
 
-def combine_skeletons(roots):
+def combine_skeletons(skeletons):
   joints = {}
-  for idx, root in enumerate(roots):
-    for k, v in root.to_dict().items():
+  for idx, skeleton in enumerate(skeletons):
+    for k, v in skeleton.items():
       joints['%s_%d' % (k, idx)] = v
   return joints
 

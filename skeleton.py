@@ -57,6 +57,7 @@ smpl_asf_map = {
   23: 'rhand'
 }
 
+
 asf_smpl_map = {
   'root': 0,
   'lfemur': 1,
@@ -104,14 +105,13 @@ class Joint:
     self.parent = None
     self.children = []
     # bone's far end's cooridnate
-    # near end is parent's end_coord
-    self.end_coord = None
+    self.coordinate = None
     self.matrix = None
 
   def set_motion(self, motion):
     if self.name == 'root':
-      self.end_coord = np.array(motion['root'][:3])
-      self.end_coord = np.zeros(3)
+      self.coordinate = np.array(motion['root'][:3])
+      self.coordinate = np.zeros(3)
       rotation = np.deg2rad(motion['root'][3:])
       self.matrix = self.C * np.matrix(transforms3d.euler.euler2mat(*rotation)) * self.Cinv
     else:
@@ -125,7 +125,7 @@ class Joint:
       rotation = np.deg2rad(rotation)
       self.matrix = self.parent.matrix * self.C * \
           np.matrix(transforms3d.euler.euler2mat(*rotation)) * self.Cinv
-      self.end_coord = np.squeeze(np.array(np.reshape(self.parent.end_coord, [3, 1]) + self.length * self.matrix * np.reshape(self.direction, [3, 1])))
+      self.coordinate = np.squeeze(np.array(np.reshape(self.parent.coordinate, [3, 1]) + self.length * self.matrix * np.reshape(self.direction, [3, 1])))
 
       if self.name == 'ltibia':
         print('================== ASF ltibia =================')
@@ -142,9 +142,9 @@ class Joint:
 
   def reset_pose(self):
     if self.name == 'root':
-      self.end_coord = np.zeros(3)
+      self.coordinate = np.zeros(3)
     else:
-      self.end_coord = self.parent.end_coord + self.length * self.direction
+      self.coordinate = self.parent.coordinate + self.length * np.squeeze(np.array(self.direction))
     for child in self.children:
       child.reset_pose()
 
@@ -194,3 +194,18 @@ class SMPLJoints:
     for child in self.children:
       ret.update(child.to_dict())
     return ret
+
+
+def setup_smpl_joints(smpl):
+  joints = {}
+  for i in range(24):
+    joints[i] = SMPLJoints(i)
+  for child, parent in smpl.parent.items():
+    joints[child].parent = joints[parent]
+    joints[parent].children.append(joints[child])
+  J = smpl.J / 0.45 * 10
+  for j in joints.values():
+    j.coordinate = J[j.idx]
+  for j in joints.values():
+    j.init_bone()
+  return joints
