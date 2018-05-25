@@ -107,6 +107,7 @@ class Joint:
     # bone's far end's cooridnate
     self.coordinate = None
     self.matrix = None
+    self.relative_R = None
 
   def set_motion(self, motion):
     if self.name == 'root':
@@ -114,6 +115,7 @@ class Joint:
       self.coordinate = np.zeros(3)
       rotation = np.deg2rad(motion['root'][3:])
       self.matrix = self.C * np.matrix(transforms3d.euler.euler2mat(*rotation)) * self.Cinv
+      self.relative_R = np.array(self.matrix)
     else:
       # set rx ry rz according to degree of freedom
       idx = 0
@@ -123,8 +125,8 @@ class Joint:
           rotation[axis] = motion[self.name][idx]
           idx += 1
       rotation = np.deg2rad(rotation)
-      self.matrix = self.parent.matrix * self.C * \
-          np.matrix(transforms3d.euler.euler2mat(*rotation)) * self.Cinv
+      self.relative_R = np.array(self.C * np.matrix(transforms3d.euler.euler2mat(*rotation)) * self.Cinv)
+      self.matrix = self.parent.matrix * np.matrix(self.relative_R)
       self.coordinate = np.squeeze(np.array(np.reshape(self.parent.coordinate, [3, 1]) + self.length * self.matrix * np.reshape(self.direction, [3, 1])))
 
       if self.name == 'ltibia':
@@ -145,7 +147,8 @@ class Joint:
       self.coordinate = np.zeros(3)
     else:
       self.coordinate = self.parent.coordinate + self.length * np.squeeze(np.array(self.direction))
-    self.matrix = np.matrix(np.eye(3))
+    self.relative_R = np.eye(3)
+    self.matrix = np.matrix(self.relative_R)
     for child in self.children:
       child.reset_pose()
 
