@@ -181,14 +181,19 @@ class SMPLJoints:
           np.squeeze(np.dot(self.parent.matrix,
                             np.reshape(self.to_parent, [3, 1])))
       self.matrix = np.dot(self.parent.matrix, R[self.idx])
+
+      # print('my index is', self.idx)
+      # print('my parent\'s matrix is', self.parent.matrix)
+      # print('the bone is', self.to_parent / np.linalg.norm(self.to_parent))
+      # print('the final bone is', (self.coordinate - self.parent.coordinate) / np.linalg.norm(self.coordinate - self.parent.coordinate))
     else:
       self.matrix = R[self.idx]
 
-    if self.idx == asf_smpl_map['lfemur']:
-      print('====================== SMPL =====================')
-      print(self.to_parent / np.linalg.norm(self.to_parent))
-      print(self.matrix)
-      print(np.squeeze(np.dot(self.parent.matrix, np.reshape(self.to_parent, [3, 1]))))
+    # if self.idx == asf_smpl_map['lfemur']:
+    #   print('====================== SMPL =====================')
+    #   print(self.to_parent / np.linalg.norm(self.to_parent))
+    #   print(self.matrix)
+    #   print(np.squeeze(np.dot(self.parent.matrix, np.reshape(self.to_parent, [3, 1]))))
 
     for child in self.children:
       child.set_motion(R)

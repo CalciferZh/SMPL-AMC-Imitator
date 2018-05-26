@@ -12,9 +12,13 @@ def align_smpl_asf(asf_joints, smpl_joints):
 
     smpl_root = smpl_joints[asf_smpl_map[bone_name]]
     smpl_knee = smpl_root.children[0]
-    smpl_dir = smpl_knee.to_parent
+    smpl_dir = smpl_knee.to_parent / np.linalg.norm(smpl_knee.to_parent)
 
     R[smpl_root.idx] = compute_rodrigues(smpl_dir, asf_dir)
+
+    # print(smpl_dir)
+    # print(R[smpl_root.idx])
+    # print(np.dot(R[smpl_root.idx], np.reshape(smpl_dir, [3,1])))
 
   for bone_name in ['ltibia', 'rtibia']:
     asf_tibia_dir = asf_joints[bone_name].direction
@@ -35,6 +39,12 @@ def align_smpl_asf(asf_joints, smpl_joints):
 
   return R
 
+
+def transfer_R(asf_joints):
+  R = {}
+  for bone in asf_joints:
+    R[asf_smpl_map[bone.name]] = bone.relative_R
+  return R
 
 
 
