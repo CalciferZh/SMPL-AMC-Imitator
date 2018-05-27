@@ -1,12 +1,12 @@
 from skeleton import asf_smpl_map
-from mathtool import *
+from skeleton import smpl_asf_map
+from mathtool import compute_rodrigues
+import numpy as np
 
 
 def align_smpl_asf(asf_joints, smpl_joints):
   '''Return a R to align default smpl and asf to the same pose.
   Process legs only (femur and tibia)'''
-  R = np.stack([np.eye(3) for k in range(24)], axis=0)
-
   for bone_name in ['lfemur', 'rfemur']:
     asf_dir = asf_joints[bone_name].direction
 
@@ -14,11 +14,7 @@ def align_smpl_asf(asf_joints, smpl_joints):
     smpl_knee = smpl_root.children[0]
     smpl_dir = smpl_knee.to_parent / np.linalg.norm(smpl_knee.to_parent)
 
-    R[smpl_root.idx] = compute_rodrigues(smpl_dir, asf_dir)
-
-    # print(smpl_dir)
-    # print(R[smpl_root.idx])
-    # print(np.dot(R[smpl_root.idx], np.reshape(smpl_dir, [3,1])))
+    smpl_root.align_R = compute_rodrigues(smpl_dir, asf_dir)
 
   for bone_name in ['ltibia', 'rtibia']:
     asf_tibia_dir = asf_joints[bone_name].direction
@@ -35,16 +31,12 @@ def align_smpl_asf(asf_joints, smpl_joints):
     smpl_tibia_dir = smpl_ankle.to_parent
     smpl_femur_dir = smpl_knee.to_parent
 
-    R[smpl_knee.idx] = compute_rodrigues(smpl_tibia_dir, smpl_femur_dir)
-
-  return R
+    smpl_knee.align_R = smpl_knee.parent.align_R.dot(compute_rodrigues(smpl_tibia_dir, smpl_femur_dir))
 
 
-def transfer_R(asf_joints):
+def map_R_asf_smpl(asf_joints):
   R = {}
-  for bone in asf_joints:
-    R[asf_smpl_map[bone.name]] = bone.relative_R
+  for k, v in smpl_asf_map.items():
+    R[k] = asf_joints[v].relative_R
   return R
-
-
 

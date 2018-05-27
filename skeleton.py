@@ -129,10 +129,6 @@ class Joint:
       self.matrix = self.parent.matrix * np.matrix(self.relative_R)
       self.coordinate = np.squeeze(np.array(np.reshape(self.parent.coordinate, [3, 1]) + self.length * self.matrix * np.reshape(self.direction, [3, 1])))
 
-      if self.name == 'ltibia':
-        print('================== ASF ltibia =================')
-        print(np.array(self.matrix * np.reshape(self.direction, [3, 1])))
-
     for child in self.children:
       child.set_motion(motion)
 
@@ -170,33 +166,25 @@ class SMPLJoints:
     self.coordinate = None
     self.matrix = None
     self.children = []
+    self.align_R = np.eye(3)
+    self.motion_R = None
 
   def init_bone(self):
     if self.parent is not None:
       self.to_parent = self.coordinate - self.parent.coordinate
 
-  def set_motion(self, R):
+  def set_motion_R(self, motion):
+    self.motion_R = motion[self.idx]
     if self.parent is not None:
-      self.coordinate = self.parent.coordinate + \
-          np.squeeze(np.dot(self.parent.matrix,
-                            np.reshape(self.to_parent, [3, 1])))
-      self.matrix = np.dot(self.parent.matrix, R[self.idx])
-
-      # print('my index is', self.idx)
-      # print('my parent\'s matrix is', self.parent.matrix)
-      # print('the bone is', self.to_parent / np.linalg.norm(self.to_parent))
-      # print('the final bone is', (self.coordinate - self.parent.coordinate) / np.linalg.norm(self.coordinate - self.parent.coordinate))
-    else:
-      self.matrix = R[self.idx]
-
-    # if self.idx == asf_smpl_map['lfemur']:
-    #   print('====================== SMPL =====================')
-    #   print(self.to_parent / np.linalg.norm(self.to_parent))
-    #   print(self.matrix)
-    #   print(np.squeeze(np.dot(self.parent.matrix, np.reshape(self.to_parent, [3, 1]))))
-
+      self.motion_R = self.parent.motion_R.dot(self.motion_R)
     for child in self.children:
-      child.set_motion(R)
+      child.set_motion_R(motion)
+
+  def update_coord(self):
+    if self.parent is not None:
+      self.coordinate = self.parent.coordinate + np.squeeze(self.parent.motion_R.dot(self.parent.align_R).dot(np.reshape(self.to_parent, [3,1])))
+    for child in self.children:
+      child.update_coord()
 
   def to_dict(self):
     ret = {self.idx: self}
