@@ -131,6 +131,9 @@ class Viewer:
   def set_asf_joints(self, asf_joints):
     self.asf_joints = asf_joints
 
+  def set_smpl_joints(self, smpl_joints):
+    self.smpl_joints = smpl_joints
+
   def set_motion(self, motions):
     self.motions = motions
 
