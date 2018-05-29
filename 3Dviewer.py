@@ -2,15 +2,23 @@ import pygame
 import numpy as np
 import time
 import transforms3d.euler as euler
-from reader import *
+
+import reader
+from transfer import *
+from vistool import *
+from skeleton import *
+from smpl_np import SMPLModel
 
 from OpenGL.GL import *
 from OpenGL.GLU import *
 
 
-class Viwer:
-  def __init__(self, joints=None, motions=None):
-    self.joints = joints
+class Viewer:
+  def __init__(self, asf_joints, smpl_joints, motions):
+    self.asf_joints = asf_joints
+    self.smpl_joints = smpl_joints
+    align_smpl_asf(asf_joints, smpl_joints)
+
     self.motions = motions
     self.frame = 0
     self.playing = False
@@ -28,7 +36,7 @@ class Viwer:
     self.speed_trans = 0.25
     self.speed_zoom = 0.5
     self.done = False
-    self.default_translate = np.array([0, -20, -100], dtype=np.float32)
+    self.default_translate = np.array([0, 0, -200], dtype=np.float32)
     self.translate = np.copy(self.default_translate)
 
     pygame.init()
@@ -120,8 +128,8 @@ class Viwer:
     gry = euler.euler2mat(0, self.global_ry, 0)
     self.rotation_R = grx.dot(gry)
 
-  def set_joints(self, joints):
-    self.joints = joints
+  def set_asf_joints(self, asf_joints):
+    self.asf_joints = asf_joints
 
   def set_motion(self, motions):
     self.motions = motions
@@ -130,12 +138,21 @@ class Viwer:
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
     glBegin(GL_POINTS)
-    for j in joints.values():
-      coord = np.array(np.squeeze(j.coordinate).dot(self.rotation_R)+self.translate, dtype=np.float32)
-      glVertex3f(*coord)
+    self.draw_joints(self.asf_joints)
+    self.draw_joints(self.smpl_joints)
     glEnd()
 
     glBegin(GL_LINES)
+    self.draw_bones(self.asf_joints)
+    self.draw_bones(self.smpl_joints)
+    glEnd()
+
+  def draw_joints(self, joints):
+    for j in joints.values():
+      coord = np.array(np.squeeze(j.coordinate).dot(self.rotation_R)+self.translate, dtype=np.float32)
+      glVertex3f(*coord)
+
+  def draw_bones(self, joints):
     for j in joints.values():
       child = j
       parent = j.parent
@@ -144,16 +161,25 @@ class Viwer:
         coord_y = np.array(np.squeeze(parent.coordinate).dot(self.rotation_R)+self.translate, dtype=np.float32)
         glVertex3f(*coord_x)
         glVertex3f(*coord_y)
-    glEnd()
+
+  def update_motion(self):
+    self.asf_joints['root'].set_motion(self.motions[self.frame])
+
+    R, offset = map_R_asf_smpl(asf_joints)
+    self.smpl_joints[0].coordinate = offset
+    self.smpl_joints[0].set_motion_R(R)
+    self.smpl_joints[0].update_coord()
+    move_skeleton(self.smpl_joints, [-40, 0, 0])
+
+    if self.playing:
+      self.frame += 1
+      if self.frame >= len(self.motions):
+        self.frame = 0
 
   def run(self):
     while not self.done:
       self.process_event()
-      self.joints['root'].set_motion(self.motions[self.frame])
-      if self.playing:
-        self.frame += 1
-        if self.frame >= len(self.motions):
-          self.frame = 0
+      self.update_motion()
       self.draw()
       pygame.display.set_caption('AMC Parser - frame %d / %d' % (self.frame, len(self.motions)))
       pygame.display.flip()
@@ -162,9 +188,13 @@ class Viwer:
 
 
 if __name__ == '__main__':
-  asf_path = './data/01/01.asf'
-  amc_path = './data/01/01_01.amc'
-  joints = parse_asf(asf_path)
-  motions = parse_amc(amc_path)
-  v = Viwer(joints, motions)
+  asf_joints = reader.parse_asf('./data/01/01.asf')
+  asf_joints['root'].reset_pose()
+
+  smpl = SMPLModel('./model.pkl')
+  smpl_joints = setup_smpl_joints(smpl)
+
+  motions = reader.parse_amc('./data/01/01_01.amc')
+
+  v = Viewer(asf_joints, smpl_joints, motions)
   v.run()

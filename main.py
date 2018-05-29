@@ -3,9 +3,10 @@ from smpl_np import SMPLModel
 from skeleton import *
 from vistool import *
 from transfer import *
+from 3Dviewer.py import *
 
 
-def draw_pose():
+def draw_pose_static():
   asf_joints = reader.parse_asf('./data/01/01.asf')
   asf_joints['root'].reset_pose()
 
@@ -18,9 +19,8 @@ def draw_pose():
   motion = reader.parse_amc('./data/01/01_01.amc')[frame_idx]
   asf_joints['root'].set_motion(motion)
 
-  R = map_R_asf_smpl(asf_joints)
+  R, offset = map_R_asf_smpl(asf_joints)
   smpl_joints[0].set_motion_R(R)
-
   smpl_joints[0].update_coord()
 
   move_skeleton(smpl_joints, [40, 0, 0])
@@ -39,4 +39,4 @@ if __name__ == '__main__':
   # draw_joints_in_motion_wrapper()
   # smpl_joints_test()
   # test()
-  draw_pose()
+  draw_pose_static()

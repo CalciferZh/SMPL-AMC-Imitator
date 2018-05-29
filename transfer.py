@@ -38,5 +38,5 @@ def map_R_asf_smpl(asf_joints):
   R = {}
   for k, v in smpl_asf_map.items():
     R[k] = asf_joints[v].relative_R
-  return R
+  return R, np.copy(np.squeeze(asf_joints['root'].coordinate))
 
