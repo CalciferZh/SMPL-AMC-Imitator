@@ -39,6 +39,9 @@ class Viewer:
     self.default_translate = np.array([0, 0, -200], dtype=np.float32)
     self.translate = np.copy(self.default_translate)
 
+    self.smpl_default_translate = np.array([-40, 0, 0], dtype=np.float32)
+    self.smpl_translate = np.copy(np.array([-40, 0, 0], dtype=np.float32))
+
     pygame.init()
     self.screen_size = (1024, 768)
     self.screen = pygame.display.set_mode(self.screen_size, pygame.DOUBLEBUF | pygame.OPENGL)
@@ -68,6 +71,7 @@ class Viewer:
       elif event.type == pygame.KEYDOWN:
         if event.key == pygame.K_RETURN:
           self.translate = self.default_translate
+          self.smpl_translate = self.smpl_default_translate
           self.global_rx = 0
           self.global_ry = 0
         elif event.key == pygame.K_SPACE:
@@ -123,6 +127,14 @@ class Viewer:
       self.frame += 1
       if self.frame < 0:
         self.frame = len(self.motions) - 1
+    if pressed[pygame.K_KP8]:
+      self.smpl_translate[1] += self.speed_trans
+    if pressed[pygame.K_KP2]:
+      self.smpl_translate[1] -= self.speed_trans
+    if pressed[pygame.K_KP4]:
+      self.smpl_translate[0] -= self.speed_trans
+    if pressed[pygame.K_KP6]:
+      self.smpl_translate[0] += self.speed_trans
 
     grx = euler.euler2mat(self.global_rx, 0, 0)
     gry = euler.euler2mat(0, self.global_ry, 0)
@@ -172,7 +184,7 @@ class Viewer:
     self.smpl_joints[0].coordinate = offset
     self.smpl_joints[0].set_motion_R(R)
     self.smpl_joints[0].update_coord()
-    move_skeleton(self.smpl_joints, [-40, 0, 0])
+    move_skeleton(self.smpl_joints, self.smpl_translate)
 
     if self.playing:
       self.frame += 1
