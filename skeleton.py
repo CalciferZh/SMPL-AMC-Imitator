@@ -112,7 +112,6 @@ class Joint:
   def set_motion(self, motion):
     if self.name == 'root':
       self.coordinate = np.array(motion['root'][:3])
-      self.coordinate = np.zeros(3)
       rotation = np.deg2rad(motion['root'][3:])
       self.matrix = self.C * np.matrix(transforms3d.euler.euler2mat(*rotation)) * self.Cinv
       self.relative_R = np.array(self.matrix)
