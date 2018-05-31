@@ -203,13 +203,16 @@ class Viewer:
 
 
 if __name__ == '__main__':
-  asf_joints = reader.parse_asf('./data/01/01.asf')
+  subject = '28'
+  sequence = '01'
+
+  asf_joints = reader.parse_asf('./data/%s/%s.asf' % (subject, subject))
   asf_joints['root'].reset_pose()
 
   smpl = SMPLModel('./model.pkl')
   smpl_joints = setup_smpl_joints(smpl)
 
-  motions = reader.parse_amc('./data/01/01_01.amc')
+  motions = reader.parse_amc('./data/%s/%s_%s.amc' % (subject, subject, sequence))
 
   v = Viewer(asf_joints, smpl_joints, motions)
   v.run()
