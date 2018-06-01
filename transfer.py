@@ -1,7 +1,12 @@
 from skeleton import asf_smpl_map
 from skeleton import smpl_asf_map
+from skeleton import setup_smpl_joints
 from mathtool import compute_rodrigues
+from smpl_np import SMPLModel
 import numpy as np
+import reader
+import vistool
+
 
 
 def align_smpl_asf(asf_joints, smpl_joints):
@@ -40,3 +45,37 @@ def map_R_asf_smpl(asf_joints):
     R[k] = asf_joints[v].relative_R
   return R, np.copy(np.squeeze(asf_joints['root'].coordinate))
 
+
+def set_smpl(smpl_joints, smpl):
+  G = np.empty([len(smpl_joints), 4, 4])
+  for j in smpl_joints.values():
+    G[j.idx] = j.export_G()
+  smpl.do_skinning(G)
+
+
+if __name__ == '__main__':
+  subject = '01'
+  sequence = '01'
+  frame_idx = 180
+
+  asf_joints = reader.parse_asf('./data/%s/%s.asf' % (subject, subject))
+  asf_joints['root'].reset_pose()
+
+  smpl = SMPLModel('./model.pkl')
+  smpl_joints = setup_smpl_joints(smpl, False)
+
+  align_smpl_asf(asf_joints, smpl_joints)
+
+  motions = reader.parse_amc('./data/%s/%s_%s.amc' % (subject, subject, sequence))
+
+  motion = motions[frame_idx]
+
+  asf_joints['root'].set_motion(motion)
+  R, offset = map_R_asf_smpl(asf_joints)
+  smpl_joints[0].coordinate = offset
+  smpl_joints[0].set_motion_R(R)
+  smpl_joints[0].update_coord()
+
+  set_smpl(smpl_joints, smpl)
+
+  smpl.output_mesh('posed.obj')

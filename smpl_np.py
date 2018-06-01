@@ -34,6 +34,8 @@ class SMPLModel():
 
         self.update()
 
+        print(self.weights.shape)
+
     def set_params(self, pose=None, beta=None, trans=None):
         if pose is not None:
             self.pose = pose
@@ -44,13 +46,10 @@ class SMPLModel():
         self.update()
         return self.verts
 
-
-    def update(self):
-        v_shaped = self.v_template
-        self.J = self.J_regressor.dot(v_shaped)
+    def compute_R_G(self):
+        self.J = self.J_regressor.dot(self.v_template)
         pose_cube = self.pose.reshape((-1, 1, 3))
         self.R = self.rodrigues(pose_cube)
-        v_posed = v_shaped
         G = np.empty((self.kintree_table.shape[1], 4, 4))
         G[0, :, :] = self.with_zeros(np.hstack((self.R[0], self.J[0, :].reshape([3, 1]))))
         for i in range(1, self.kintree_table.shape[1]):
@@ -61,6 +60,9 @@ class SMPLModel():
                     )
                 )
             )
+        return G
+
+    def do_skinning(self, G):
         G = G - self.pack(
             np.matmul(
                 G,
@@ -68,9 +70,13 @@ class SMPLModel():
                 )
             )
         T = np.tensordot(self.weights, G, axes=[[1], [0]])
-        rest_shape_h = np.hstack((v_posed, np.ones([v_posed.shape[0], 1])))
+        rest_shape_h = np.hstack((self.v_template, np.ones([self.v_template.shape[0], 1])))
         v = np.matmul(T, rest_shape_h.reshape([-1, 4, 1])).reshape([-1, 4])[:, :3]
         self.verts = v + self.trans.reshape([1, 3])
+
+    def update(self):
+        G = self.compute_R_G()
+        self.do_skinning(G)
 
     def rodrigues(self, r):
         theta = np.linalg.norm(r, axis=(1, 2), keepdims=True)
@@ -95,11 +101,18 @@ class SMPLModel():
         return R
 
     def with_zeros(self, x):
-        return np.vstack((x, np.array([[0.0, 0.0, 0.0, 1.0]])))
-
+        return np.vstack([x, np.array([[0.0, 0.0, 0.0, 1.0]])])
 
     def pack(self, x):
-        return np.dstack((np.zeros((x.shape[0], 4, 3)), x))
+        return np.dstack([np.zeros([x.shape[0], 4, 3]), x])
+
+    def output_mesh(self, path):
+        with open(path, 'w') as fp:
+            for v in self.verts:
+                fp.write('v %f %f %f\n' % (v[0], v[1], v[2]))
+            for f in self.faces + 1:
+                fp.write('f %d %d %d\n' % (f[0], f[1], f[2]))
+
 
 
 if __name__ == '__main__':
@@ -110,9 +123,5 @@ if __name__ == '__main__':
     trans = np.zeros(smpl.trans_shape)
     faces = smpl.faces
     verts = smpl.set_params(beta=beta, pose=pose, trans=trans)
-    outmesh_path = './smpl_np.obj'
-    with open(outmesh_path, 'w') as fp:
-        for v in verts:
-            fp.write('v %f %f %f\n' % (v[0], v[1], v[2]))
-        for f in faces + 1:
-            fp.write('f %d %d %d\n' % (f[0], f[1], f[2]))
+    outmesh_path = './smpl.obj'
+    smpl.output_mesh(outmesh_path)

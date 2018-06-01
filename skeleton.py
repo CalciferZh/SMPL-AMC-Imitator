@@ -181,7 +181,8 @@ class SMPLJoints:
 
   def update_coord(self):
     if self.parent is not None:
-      self.coordinate = self.parent.coordinate + np.squeeze(self.parent.motion_R.dot(self.parent.align_R).dot(np.reshape(self.to_parent, [3,1])))
+      absolute_R = self.parent.motion_R.dot(self.parent.align_R)
+      self.coordinate = self.parent.coordinate + np.squeeze(absolute_R.dot(np.reshape(self.to_parent, [3,1])))
     for child in self.children:
       child.update_coord()
 
@@ -191,15 +192,25 @@ class SMPLJoints:
       ret.update(child.to_dict())
     return ret
 
+  def export_G(self):
+    G = np.zeros([4, 4])
+    G[:3,:3] = self.motion_R.dot(self.align_R)
+    G[:3,3] = self.coordinate
+    G[3,3] = 1
+    return G
 
-def setup_smpl_joints(smpl):
+
+def setup_smpl_joints(smpl, rescale=True):
   joints = {}
   for i in range(24):
     joints[i] = SMPLJoints(i)
   for child, parent in smpl.parent.items():
     joints[child].parent = joints[parent]
     joints[parent].children.append(joints[child])
-  J = smpl.J / 0.45 * 10
+  if rescale:
+    J = smpl.J / 0.45 * 10
+  else:
+    J = smpl.J
   for j in joints.values():
     j.coordinate = J[j.idx]
   for j in joints.values():
