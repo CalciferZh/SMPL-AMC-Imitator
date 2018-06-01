@@ -77,7 +77,7 @@ class Imitator:
 
   def asf_to_smpl_joints(self):
     R, offset = self.map_R_asf_smpl()
-    self.smpl_joints[0].coordinate = offset
+    # self.smpl_joints[0].coordinate = offset
     self.smpl_joints[0].set_motion_R(R)
     self.smpl_joints[0].update_coord()
 
@@ -99,7 +99,7 @@ if __name__ == '__main__':
   )
 
   sequence = '01'
-  frame_idx = 180
+  frame_idx = 0
   motions = reader.parse_amc('./data/%s/%s_%s.amc' % (subject, subject, sequence))
   im.imitate(motions[frame_idx])
   im.smpl.output_mesh('./posed.obj')
