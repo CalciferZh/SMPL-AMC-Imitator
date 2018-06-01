@@ -34,8 +34,6 @@ class SMPLModel():
 
         self.update()
 
-        print(self.weights.shape)
-
     def set_params(self, pose=None, beta=None, trans=None):
         if pose is not None:
             self.pose = pose
