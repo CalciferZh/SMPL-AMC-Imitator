@@ -31,14 +31,21 @@ class Imitator:
   def align_smpl_asf(self):
     '''Return a R to align default smpl and asf to the same pose.
     Process legs only (femur and tibia)'''
+
     for bone_name in ['lfemur', 'rfemur']:
       asf_dir = self.asf_joints[bone_name].direction
 
-      smpl_root = self.smpl_joints[asf_smpl_map[bone_name]]
-      smpl_knee = smpl_root.children[0]
+      smpl_leg_root = self.smpl_joints[asf_smpl_map[bone_name]]
+      # leg rotation -- not good
+      # if bone_name == 'lfemur':
+      #   smpl_leg_root.align_R = transforms3d.euler.axangle2mat([0, 1, 0], -np.pi/16)
+      # else:
+      #   smpl_leg_root.align_R = transforms3d.euler.axangle2mat([0, 1, 0], +np.pi/16)
+
+      smpl_knee = smpl_leg_root.children[0]
       smpl_dir = smpl_knee.to_parent / np.linalg.norm(smpl_knee.to_parent)
 
-      smpl_root.align_R = self.compute_rodrigues(smpl_dir, asf_dir)
+      smpl_leg_root.align_R = smpl_leg_root.align_R.dot(self.compute_rodrigues(smpl_dir, asf_dir))
 
     for bone_name in ['ltibia', 'rtibia']:
       asf_tibia_dir = self.asf_joints[bone_name].direction
@@ -50,7 +57,6 @@ class Imitator:
         exit()
 
       smpl_knee = self.smpl_joints[asf_smpl_map[bone_name]]
-      smpl_root = smpl_knee.parent
       smpl_ankle = smpl_knee.children[0]
       smpl_tibia_dir = smpl_ankle.to_parent
       smpl_femur_dir = smpl_knee.to_parent
