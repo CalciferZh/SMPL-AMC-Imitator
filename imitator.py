@@ -83,7 +83,7 @@ class Imitator:
 
   def asf_to_smpl_joints(self):
     R, offset = self.map_R_asf_smpl()
-    # self.smpl_joints[0].coordinate = offset
+    self.smpl_joints[0].coordinate = offset
     self.smpl_joints[0].set_motion_R(R)
     self.smpl_joints[0].update_coord()
 

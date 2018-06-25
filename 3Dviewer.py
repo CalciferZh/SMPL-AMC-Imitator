@@ -3,6 +3,7 @@ import numpy as np
 import time
 import transforms3d.euler as euler
 import graphics_np
+import copy
 
 import reader
 from vistool import *
@@ -15,11 +16,10 @@ from OpenGL.GLU import *
 
 
 class SkeletonViewer:
-  def __init__(self, asf_joints, smpl_joints, motions):
-    self.asf_joints = asf_joints
-    self.smpl_joints = smpl_joints
-    align_smpl_asf(asf_joints, smpl_joints)
-
+  def __init__(self, imitator, motions):
+    self.imitator = imitator
+    self.smpl_joints = copy.copy(self.imitator.smpl_joints)
+    self.asf_joints = copy.copy(self.imitator.asf_joints)
     self.motions = motions
     self.frame = 0
     self.playing = False
@@ -41,7 +41,7 @@ class SkeletonViewer:
     self.translate = np.copy(self.default_translate)
 
     self.smpl_default_translate = np.array([-40, 0, 0], dtype=np.float32)
-    self.smpl_translate = np.copy(np.array([-40, 0, 0], dtype=np.float32))
+    self.smpl_translate = np.copy(self.smpl_default_translate)
 
     pygame.init()
     self.screen_size = (1024, 768)
@@ -179,12 +179,15 @@ class SkeletonViewer:
         glVertex3f(*coord_y)
 
   def update_motion(self):
-    self.asf_joints['root'].set_motion(self.motions[self.frame])
+    self.imitator.imitate(self.motions[self.frame])
+    self.smpl_joints = copy.deepcopy(self.imitator.smpl_joints)
+    self.asf_joints = copy.copy(self.imitator.asf_joints)
 
-    R, offset = map_R_asf_smpl(asf_joints)
-    self.smpl_joints[0].coordinate = offset
-    self.smpl_joints[0].set_motion_R(R)
-    self.smpl_joints[0].update_coord()
+    for j in self.smpl_joints.values():
+      j.init_bone()
+    for j in self.smpl_joints.values():
+      if j.parent is not None:
+        j.coordinate = j.parent.coordinate + 25 * j.to_parent
     move_skeleton(self.smpl_joints, self.smpl_translate)
 
     if self.playing:
@@ -357,19 +360,16 @@ class MeshViewer:
 
 
 def test_skeleton():
-  subject = '28'
+  subject = '01'
+  im = Imitator(
+    reader.parse_asf('./data/%s/%s.asf' % (subject, subject)),
+    SMPLModel('./model.pkl')
+  )
   sequence = '01'
-
-  asf_joints = reader.parse_asf('./data/%s/%s.asf' % (subject, subject))
-  asf_joints['root'].reset_pose()
-
-  smpl = SMPLModel('./model.pkl')
-  smpl_joints = setup_smpl_joints(smpl)
-
   motions = reader.parse_amc('./data/%s/%s_%s.amc' % (subject, subject, sequence))
+  viewer = SkeletonViewer(im, motions)
+  viewer.run()
 
-  v = SkeletonViewer(asf_joints, smpl_joints, motions)
-  v.run()
 
 def test_mesh():
   subject = '01'
@@ -383,5 +383,5 @@ def test_mesh():
   viewer.run()
 
 if __name__ == '__main__':
-  test_mesh()
-  # test_skeleton()
+  # test_mesh()
+  test_skeleton()
