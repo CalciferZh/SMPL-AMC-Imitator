@@ -1,6 +1,8 @@
 # SMPL AMC/ASF Imitator
 For a given AMC/ASF motion sequence, we transfer the motion to SMPL model, and generate a corresponding SMPL sequence. The transfer method, however, is naive.
 
+This work is based on [my implmentation](https://github.com/CalciferZh/SMPL) of [SMPL model](http://smpl.is.tue.mpg.de/) and [my implementation](https://github.com/CalciferZh/AMCParser) of AMC/ASF parser.
+
 ## Demo
 
 ### Skeleton (left: SMPL target, right: ASF/AMC source)
