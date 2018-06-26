@@ -1,4 +1,4 @@
-# AMC Imitator
+# SMPL AMC/ASF Imitator
 For a given AMC/ASF motion sequence, we transfer the motion to SMPL model, and generate a corresponding SMPL sequence. The transfer method, however, is naive.
 
 ## Demo
