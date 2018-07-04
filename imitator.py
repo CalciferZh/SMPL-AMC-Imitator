@@ -75,11 +75,11 @@ class Imitator:
       R[k] = self.asf_joints[v].relative_R
     return R, np.copy(np.squeeze(self.asf_joints['root'].coordinate))
 
-  def smpl_joints_to_mesh(self):
-    G = np.empty([len(self.smpl_joints), 4, 4])
+  def extract_theta(self):
+    theta = np.empty([len(self.smpl_joints), 3])
     for j in self.smpl_joints.values():
-      G[j.idx] = j.export_G()
-    self.smpl.do_skinning(G)
+      theta[j.idx] = j.export_theta()
+    return theta
 
   def asf_to_smpl_joints(self):
     R, offset = self.map_R_asf_smpl()
@@ -87,17 +87,15 @@ class Imitator:
     self.smpl_joints[0].set_motion_R(R)
     self.smpl_joints[0].update_coord()
 
-  def set_asf_motion(self, motion):
+  def motion2theta(self, motion):
     self.asf_joints['root'].set_motion(motion)
     self.asf_to_smpl_joints()
-    self.smpl_joints_to_mesh()
-
-  def imitate(self, motion):
-    self.set_asf_motion(motion)
-
+    return self.extract_theta()
 
 if __name__ == '__main__':
   import reader
+  import pickle
+
   subject = '01'
   im = Imitator(
     reader.parse_asf('./data/%s/%s.asf' % (subject, subject)),
@@ -107,6 +105,5 @@ if __name__ == '__main__':
   sequence = '01'
   frame_idx = 0
   motions = reader.parse_amc('./data/%s/%s_%s.amc' % (subject, subject, sequence))
-  im.imitate(motions[frame_idx])
-  im.smpl.output_mesh('./posed.obj')
-
+  theta = im.motion2theta(motion[frame_idx])
+  np.save('./pose.npy', theta)
