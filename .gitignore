@@ -2,6 +2,7 @@
 data/
 *.pkl
 *.png
+*.npy
 *.obj
 
 # Byte-compiled / optimized / DLL files

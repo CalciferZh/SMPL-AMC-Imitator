@@ -105,5 +105,5 @@ if __name__ == '__main__':
   sequence = '01'
   frame_idx = 0
   motions = reader.parse_amc('./data/%s/%s_%s.amc' % (subject, subject, sequence))
-  theta = im.motion2theta(motion[frame_idx])
+  theta = im.motion2theta(motions[frame_idx])
   np.save('./pose.npy', theta)

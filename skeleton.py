@@ -208,7 +208,10 @@ class SMPLJoints:
       self_G = self.export_G()
       # parent_G * relative_G = self_G
       self_relative_G = np.linalg.inv(parent_G).dot(self_G)
-    return transforms3d.axangles.mat2axangle(self_relative_G)
+    ax, rad = transforms3d.axangles.mat2axangle(self_relative_G)
+    ax = ax[:3]
+    axangle = ax / np.linalg.norm(ax) * rad
+    return axangle
 
 def setup_smpl_joints(smpl, rescale=True):
   joints = {}
