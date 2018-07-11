@@ -14,6 +14,8 @@ This work is based on [my implmentation](https://github.com/CalciferZh/SMPL) of 
 ## Usage
 Run `python 3Dviewer.py` to see demo.
 
+Also, run `python batch.py` to extract all poses into `./pose/` from `./data/`.
+
 ## Challenge
 The skeleton of SMPL is a little bit different from CMU MoCap Dataset's. In this implementation, we only process femur and tibia and ignore other differences. We first pose SMPL skeleton (specifically legs) to be in the same pose with ASF defination. After that, we extract rotation matrices from AMC files and apply them to the aligned SMPL model.
 
