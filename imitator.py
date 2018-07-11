@@ -81,6 +81,17 @@ class Imitator:
       G[j.idx] = j.export_G()
     self.smpl.do_skinning(G)
 
+  def extract_theta(self):
+    theta = np.empty([len(self.smpl_joints), 3])
+    for j in self.smpl_joints.values():
+      theta[j.idx] = j.export_theta()
+    return theta
+
+  def motion2theta(self, motion):
+    self.asf_joints['root'].set_motion(motion)
+    self.asf_to_smpl_joints()
+    return self.extract_theta()
+
   def asf_to_smpl_joints(self):
     R, offset = self.map_R_asf_smpl()
     self.smpl_joints[0].coordinate = offset
@@ -98,6 +109,8 @@ class Imitator:
 
 if __name__ == '__main__':
   import reader
+  import pickle
+
   subject = '01'
   im = Imitator(
     reader.parse_asf('./data/%s/%s.asf' % (subject, subject)),
@@ -107,6 +120,5 @@ if __name__ == '__main__':
   sequence = '01'
   frame_idx = 0
   motions = reader.parse_amc('./data/%s/%s_%s.amc' % (subject, subject, sequence))
-  im.imitate(motions[frame_idx])
-  im.smpl.output_mesh('./posed.obj')
-
+  theta = im.motion2theta(motions[frame_idx])
+  np.save('./pose.npy', theta)

@@ -199,6 +199,20 @@ class SMPLJoints:
     G[3,3] = 1
     return G
 
+  def export_theta(self):
+    self_relative_G = None
+    if self.parent is None:
+      self_relative_G = self.export_G()[:3,:3]
+    else:
+      parent_G = self.parent.export_G()[:3,:3]
+      self_G = self.export_G()[:3,:3]
+      # parent_G * relative_G = self_G
+      self_relative_G = np.linalg.inv(parent_G).dot(self_G)
+    ax, rad = transforms3d.axangles.mat2axangle(self_relative_G)
+    ax = ax[:3]
+    axangle = ax / np.linalg.norm(ax) * rad
+    return axangle
+
 
 def setup_smpl_joints(smpl, rescale=True):
   joints = {}
