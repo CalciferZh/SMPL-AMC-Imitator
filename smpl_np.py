@@ -114,9 +114,12 @@ class SMPLModel():
 
 
 if __name__ == '__main__':
+    import pickle
+
     smpl = SMPLModel('./model.pkl')
     np.random.seed(9608)
-    pose = (np.random.rand(*smpl.pose_shape) - 0.5) * 0.4
+    # pose = (np.random.rand(*smpl.pose_shape) - 0.5) * 0.4
+    pose = np.load('./pose.npy')
     beta = (np.random.rand(*smpl.beta_shape) - 0.5) * 0.06
     trans = np.zeros(smpl.trans_shape)
     faces = smpl.faces
