@@ -4,6 +4,7 @@ data/
 *.png
 *.obj
 *.npy
+pose/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
