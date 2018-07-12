@@ -13,6 +13,7 @@ if __name__ == '__main__':
   for lv1 in tqdm(lv1s, ncols=120):
     lv2s = os.listdir('/'.join([lv0, lv1]))
     asf_path = '%s/%s/%s.asf' % (lv0, lv1, lv1)
+    print(asf_path)
     joints = reader.parse_asf(asf_path)
     im = Imitator(
       joints,
@@ -28,3 +29,6 @@ if __name__ == '__main__':
       for idx, motion in enumerate(motions):
         pose.append(im.motion2theta(motions[idx]))
       np.save(save_path, np.array(pose))
+      
+      im.imitate(motions[0])
+      im.smpl.output_mesh(save_path.split('.')[0]+'.obj')

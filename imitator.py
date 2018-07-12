@@ -53,8 +53,7 @@ class Imitator:
       if not np.allclose(asf_femur_dir, asf_tibia_dir):
         # this case shouldn't happend in CMU dataset
         # so we just leave it here
-        print('error: femur and tibia are different!')
-        exit()
+        print('warning: femur and tibia are different!')
 
       smpl_knee = self.smpl_joints[asf_smpl_map[bone_name]]
       smpl_ankle = smpl_knee.children[0]
