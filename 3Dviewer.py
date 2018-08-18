@@ -372,7 +372,7 @@ def test_skeleton():
 
 
 def test_mesh():
-  subject = '13'
+  subject = '01'
   im = Imitator(
     reader.parse_asf('./data/%s/%s.asf' % (subject, subject)),
     SMPLModel('./model.pkl')
@@ -383,5 +383,5 @@ def test_mesh():
   viewer.run()
 
 if __name__ == '__main__':
-  # test_mesh()
-  test_skeleton()
+  test_mesh()
+  # test_skeleton()

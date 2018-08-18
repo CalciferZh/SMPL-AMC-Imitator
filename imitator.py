@@ -8,6 +8,17 @@ import transforms3d
 
 class Imitator:
   def __init__(self, asf_joints, smpl):
+    """
+    Transfer amc/asf motions into SMPL model pose.
+
+    Paramters
+    ---------
+    asf_joints: Dict returned from `reader.parse_asf`. Keys are joint names and
+    values are instance of Joint class.
+
+    smpl: `SMPLModel` class in `smpl_np.py`.
+
+    """
     asf_joints['root'].reset_pose()
     self.smpl = smpl
     self.asf_joints = asf_joints
@@ -15,6 +26,14 @@ class Imitator:
     self.align_smpl_asf()
 
   def setup_smpl_joints(self):
+    """
+    Initialize a dict of `SMPLJoint`.
+
+    Return
+    ------
+    Initilized dict of `SMPLJoint`. Keys are names, values are SMPLJoints.
+
+    """
     joints = {}
     for i in range(24):
       joints[i] = SMPLJoints(i)
@@ -28,24 +47,32 @@ class Imitator:
       j.init_bone()
     return joints
 
-  def align_smpl_asf(self):
-    '''Return a R to align default smpl and asf to the same pose.
-    Process legs only (femur and tibia)'''
+  def align_smpl_asf(self, axis_rotation=False):
+    """
+    Align SMPL default pose to asf default pose. We process legs only (femur and
+    tibia). `SMPLJoint.align_R` of leg root and knee are set.
 
+    """
     for bone_name in ['lfemur', 'rfemur']:
       asf_dir = self.asf_joints[bone_name].direction
 
       smpl_leg_root = self.smpl_joints[asf_smpl_map[bone_name]]
-      # leg rotation -- not good
-      # if bone_name == 'lfemur':
-      #   smpl_leg_root.align_R = transforms3d.euler.axangle2mat([0, 1, 0], -np.pi/16)
-      # else:
-      #   smpl_leg_root.align_R = transforms3d.euler.axangle2mat([0, 1, 0], +np.pi/16)
+      if axis_rotation:
+        if bone_name == 'lfemur':
+          smpl_leg_root.align_R = transforms3d.euler.axangle2mat(
+            [0, 1, 0], -np.pi/16
+          )
+        else:
+          smpl_leg_root.align_R = transforms3d.euler.axangle2mat(
+            [0, 1, 0], +np.pi/16
+          )
 
       smpl_knee = smpl_leg_root.children[0]
       smpl_dir = smpl_knee.to_parent / np.linalg.norm(smpl_knee.to_parent)
 
-      smpl_leg_root.align_R = smpl_leg_root.align_R.dot(self.compute_rodrigues(smpl_dir, asf_dir))
+      smpl_leg_root.align_R = smpl_leg_root.align_R.dot(
+        self.compute_rodrigues(smpl_dir, asf_dir)
+      )
 
     for bone_name in ['ltibia', 'rtibia']:
       asf_tibia_dir = self.asf_joints[bone_name].direction
@@ -60,49 +87,116 @@ class Imitator:
       smpl_tibia_dir = smpl_ankle.to_parent
       smpl_femur_dir = smpl_knee.to_parent
 
-      smpl_knee.align_R = smpl_knee.parent.align_R.dot(self.compute_rodrigues(smpl_tibia_dir, smpl_femur_dir))
+      smpl_knee.align_R = smpl_knee.parent.align_R.dot(
+        self.compute_rodrigues(smpl_tibia_dir, smpl_femur_dir)
+      )
 
   def compute_rodrigues(self, x, y):
-    ''' y = Rx '''
+    """
+    Compute rotation matrix R such that y = Rx.
+
+    Parameter
+    ---------
+    x: Ndarray to be rotated.
+    y: Ndarray after rotation.
+
+    """
     theta = np.arccos(np.inner(x, y) / (np.linalg.norm(x) * np.linalg.norm(y)))
     axis = np.squeeze(np.cross(x, y))
     return transforms3d.axangles.axangle2mat(axis, theta)
 
   def map_R_asf_smpl(self):
+    """
+    Map asf joints' rotation matrices to SMPL joints'. In other words,
+    'transfer' rotation of each asf joint to corresponding SMPL joint. Also
+    transfer global translation.
+
+    Return
+    ------
+    A tuple of (R, T), where R is a dict of name-rotation_matrix pair, and T is
+    the gloval translation for root joint.
+
+    """
     R = {}
     for k, v in smpl_asf_map.items():
       R[k] = self.asf_joints[v].relative_R
     return R, np.copy(np.squeeze(self.asf_joints['root'].coordinate))
 
   def smpl_joints_to_mesh(self):
+    """
+    Extract motions from SMPL joints to guide skinning.
+
+    """
     G = np.empty([len(self.smpl_joints), 4, 4])
     for j in self.smpl_joints.values():
       G[j.idx] = j.export_G()
     self.smpl.do_skinning(G)
 
   def extract_theta(self):
+    """
+    Extract SMPL model's theta parameter, or 'pose'. An axis-angle presentation
+    of each joint's rotation relative it's parent joint.
+
+    Return
+    ------
+    A numpy ndarray of shape (24, 3).
+
+    """
     theta = np.empty([len(self.smpl_joints), 3])
     for j in self.smpl_joints.values():
       theta[j.idx] = j.export_theta()
     return theta
 
   def motion2theta(self, motion):
+    """
+    A high level wrapper to convert asf motion into SMPL pose parameter.
+
+    Parameter
+    ---------
+    motion: A dict whose keys are joint names and values are rotation degrees
+    parsed from amc file. Should be a element of the list returned from
+    `reader.parse_amc`.
+
+    Return
+    ------
+    Pose parameter theta, an ndarray of shape (24, 3).
+
+    """
     self.asf_joints['root'].set_motion(motion)
     self.asf_to_smpl_joints()
     return self.extract_theta()
 
   def asf_to_smpl_joints(self):
+    """
+    Transfer asf joints' pose to SMPL joints. The coordinate of SMPL joints will
+    be updated.
+
+    """
     R, offset = self.map_R_asf_smpl()
     self.smpl_joints[0].coordinate = offset
     self.smpl_joints[0].set_motion_R(R)
     self.smpl_joints[0].update_coord()
 
   def set_asf_motion(self, motion):
+    """
+    Set SMPL model joints and mesh to asf motion.
+
+    Prameter
+    --------
+    motion: A dict whose keys are joint names and values are rotation degrees
+    parsed from amc file. Should be a element of the list returned from
+    `reader.parse_amc`.
+
+    """
     self.asf_joints['root'].set_motion(motion)
     self.asf_to_smpl_joints()
     self.smpl_joints_to_mesh()
 
   def imitate(self, motion):
+    """
+    A warpper for `set_asf_motion` with a cool name.
+
+    """
     self.set_asf_motion(motion)
 
 
