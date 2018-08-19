@@ -273,28 +273,68 @@ class MeshViewer:
 
     glClearColor(0.0, 0.0, 0.0, 0.0)
     glShadeModel(GL_SMOOTH)
-    glMaterialfv(
-      GL_FRONT, GL_SPECULAR, np.array([1, 1, 1, 1], dtype=np.float32)
-    )
-    glMaterialfv(
-      GL_FRONT, GL_SHININESS, np.array([100.0], dtype=np.float32)
-    )
-    glMaterialfv(
-      GL_FRONT, GL_AMBIENT, np.array([0.7, 0.7, 0.7, 0.7], dtype=np.float32)
-    )
-    glLightfv(GL_LIGHT0, GL_POSITION, np.array([0, 0, 1, 0], dtype=np.float32))
     glEnable(GL_LIGHT0)
+    glEnable(GL_LIGHT1)
     glEnable(GL_LIGHTING)
+    glEnable(GL_CULL_FACE)
     glEnable(GL_DEPTH_TEST)
     glEnable(GL_VERTEX_ARRAY)
     glEnable(GL_NORMAL_ARRAY)
+
+    # glMaterialfv(
+    #   GL_FRONT, GL_SPECULAR, np.array([1, 1, 1, 1], dtype=np.float32)
+    # )
+    # glMaterialfv(
+    #   GL_FRONT, GL_SHININESS, np.array([100.0], dtype=np.float32)
+    # )
+    # glMaterialfv(
+    #   GL_FRONT, GL_AMBIENT, np.array([0.7, 0.7, 0.7, 0.7], dtype=np.float32)
+    # )
+
+    glMaterialfv(
+      GL_FRONT,
+      GL_AMBIENT,
+      np.array([0.192250, 0.192250, 0.192250], dtype=np.float32)
+    )
+    glMaterialfv(
+      GL_FRONT,
+      GL_DIFFUSE,
+      np.array([0.507540, 0.507540, 0.507540], dtype=np.float32)
+    )
+    glMaterialfv(
+      GL_FRONT,
+      GL_SPECULAR,
+      np.array([.5082730, .5082730, .5082730], dtype=np.float32)
+    )
+    glMaterialf(
+      GL_FRONT,
+      GL_SHININESS,
+      .4 * 128.0
+    )
+
+    # glLightfv(GL_LIGHT0, GL_POSITION, np.array([0, 0, 1, 0], dtype=np.float32))
+
     gluPerspective(45, (self.screen_size[0]/self.screen_size[1]), 0.1, 50.0)
+
+    glLightfv(
+      GL_LIGHT0,
+      GL_SPECULAR,
+      np.array([0, 0, 0, 1], dtype=np.float32)
+    )
+    glLightfv(
+      GL_LIGHT0, GL_DIFFUSE,
+      np.array([1, 1, 1, 1], dtype=np.float32)
+    )
+    glLightfv(
+      GL_LIGHT0, GL_AMBIENT,
+      np.array([1, 1, 1, 1], dtype=np.float32)
+    )
 
   def run(self):
     global_rx = 0
     global_ry = 0
     # default mesh tranlsation to put the mesh in the center of the window
-    std_trans = np.array([0, 0.22, -3], dtype=np.float32)
+    std_trans = np.array([-4, 0.22, 3], dtype=np.float32)
     global_trans = std_trans
     speed_rx = np.pi / 90
     speed_ry = np.pi / 90
@@ -426,6 +466,8 @@ def test_mesh():
   viewer = MeshViewer(im, motions)
   viewer.run()
 
+
 if __name__ == '__main__':
   test_mesh()
-  test_skeleton()
+  # test_skeleton()
+  import trimesh
