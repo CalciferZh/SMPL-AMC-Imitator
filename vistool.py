@@ -3,6 +3,11 @@ import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 
 
+def imshow(img):
+  plt.imshow(img)
+  plt.show()
+
+
 def move_skeleton(joints, distance):
   distance = np.array(distance)
   for j in joints.values():

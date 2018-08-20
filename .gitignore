@@ -5,6 +5,7 @@ data/
 *.obj
 *.npy
 pose/
+video/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

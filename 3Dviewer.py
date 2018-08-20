@@ -4,6 +4,10 @@ import time
 import transforms3d.euler as euler
 import graphics_np
 import copy
+import cv2
+import os
+import random
+from tqdm import tqdm
 
 import reader
 from vistool import *
@@ -319,7 +323,15 @@ class MeshViewer:
     glEnable(GL_NORMAL_ARRAY)
     gluPerspective(45, (self.screen_size[0]/self.screen_size[1]), 0.1, 50.0)
 
-  def run(self, translate=False):
+  def run(self, translate=False, video_path=None, video_fps=120, render_fps=120,
+          auto_run=False, auto_rerun=False):
+    if video_path is not None:
+      video = cv2.VideoWriter(
+        video_path,
+        cv2.VideoWriter_fourcc(*'DIVX'),
+        video_fps,
+        self.screen_size
+      )
     global_rx = 0
     global_ry = 0
     # default mesh tranlsation to put the mesh in the center of the window
@@ -333,7 +345,7 @@ class MeshViewer:
     speed_zoom = 0.1
     frame = 0
     done = False
-    playing = False
+    playing = True if auto_run else False
     while not done:
       for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -401,6 +413,10 @@ class MeshViewer:
         frame += 1
       if frame >= self.num_frames:
         frame = 0
+        if auto_rerun:
+          playing = True
+        else:
+          playing = False
 
       grx = euler.euler2mat(global_rx, 0, 0)
       gry = euler.euler2mat(0, global_ry, 0)
@@ -428,10 +444,24 @@ class MeshViewer:
       glVertexPointerf(verts)
       glNormalPointerf(vert_normals)
       glDrawElementsui(GL_TRIANGLES, self.imitator.smpl.faces)
+
+      # using pygame.surfarray.array2d will always invoke a segmentation fault
+      if video_path is not None:
+        tmp = pygame.image.tostring(self.screen, 'RGB')
+        tmp = pygame.image.fromstring(
+          tmp,
+          self.screen_size,
+          'RGB'
+        )
+        img = np.transpose(pygame.surfarray.array3d(tmp), [1, 0, 2])
+        video.write(img)
+
       pygame.display.flip()
-      self.clock.tick(120)
+      if render_fps > 0:
+        self.clock.tick(freq)
 
     pygame.quit()
+    video.release()
 
 
 def test_skeleton():
@@ -441,7 +471,9 @@ def test_skeleton():
     SMPLModel('./model.pkl')
   )
   sequence = '01'
-  motions = reader.parse_amc('./data/%s/%s_%s.amc' % (subject, subject, sequence))
+  motions = reader.parse_amc(
+    './data/%s/%s_%s.amc' % (subject, subject, sequence)
+  )
   viewer = SkeletonViewer(im, motions)
   viewer.run()
 
@@ -453,12 +485,51 @@ def test_mesh():
     SMPLModel('./model.pkl')
   )
   sequence = '01'
-  motions = reader.parse_amc('./data/%s/%s_%s.amc' % (subject, subject, sequence))
+  motions = reader.parse_amc(
+    './data/%s/%s_%s.amc' % (subject, subject, sequence)
+  )
   viewer = MeshViewer(im, motions)
   viewer.run()
 
 
+def video_sample():
+  target_folder = './video'
+  try:
+    os.makedirs(target_folder)
+  except:
+    pass
+
+  lv0 = './data'
+  lv1s = os.listdir(lv0)
+  for lv1 in tqdm(lv1s, ncols=120):
+    lv2s = os.listdir('/'.join([lv0, lv1]))
+    asf_path = os.path.join(lv0, lv1, lv1+'.asf')
+    joints = reader.parse_asf(asf_path)
+    im = Imitator(
+      joints,
+      SMPLModel('./model.pkl')
+    )
+    random.shuffle(lv2s)
+    lv2 = None
+    for lv2 in lv2s:
+      if lv2.split('.')[-1] == 'amc':
+        break
+    amc_path = os.path.join(lv0, lv1, lv2)
+    video_path = os.path.join(
+      target_folder,
+      '%s.avi' % lv2.split('.')[0]
+    )
+    motions = reader.parse_amc(amc_path)
+    viewer = MeshViewer(im, motions)
+    viewer.run(
+      video_path=video_path,
+      render_fps=-1,
+      auto_run=True,
+      auto_rerun=False
+    )
+
+
 if __name__ == '__main__':
-  test_mesh()
+  # test_mesh()
   # test_skeleton()
-  import trimesh
+  video_sample()
