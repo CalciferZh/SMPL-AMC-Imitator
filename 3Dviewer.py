@@ -324,7 +324,7 @@ class MeshViewer:
     gluPerspective(45, (self.screen_size[0]/self.screen_size[1]), 0.1, 50.0)
 
   def run(self, translate=False, video_path=None, video_fps=120, render_fps=120,
-          auto_run=False, auto_rerun=False):
+          auto_run=False, auto_rerun=False, close_after_run=False):
     if video_path is not None:
       video = cv2.VideoWriter(
         video_path,
@@ -417,6 +417,8 @@ class MeshViewer:
           playing = True
         else:
           playing = False
+        if close_after_run:
+          done = True
 
       grx = euler.euler2mat(global_rx, 0, 0)
       gry = euler.euler2mat(0, global_ry, 0)
@@ -525,7 +527,8 @@ def video_sample():
       video_path=video_path,
       render_fps=-1,
       auto_run=True,
-      auto_rerun=False
+      auto_rerun=False,
+      close_after_run=True
     )
 
 
