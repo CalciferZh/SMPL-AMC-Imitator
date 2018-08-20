@@ -163,21 +163,22 @@ class Imitator:
 
     """
     self.asf_joints['root'].set_motion(motion)
-    self.asf_to_smpl_joints()
+    self.asf_to_smpl_joints(False)
     return self.extract_theta()
 
-  def asf_to_smpl_joints(self):
+  def asf_to_smpl_joints(self, translate):
     """
     Transfer asf joints' pose to SMPL joints. The coordinate of SMPL joints will
     be updated.
 
     """
     R, offset = self.map_R_asf_smpl()
-    self.smpl_joints[0].coordinate = offset
+    if translate:
+      self.smpl_joints[0].coordinate = offset
     self.smpl_joints[0].set_motion_R(R)
     self.smpl_joints[0].update_coord()
 
-  def set_asf_motion(self, motion):
+  def set_asf_motion(self, motion, translate):
     """
     Set SMPL model joints and mesh to asf motion.
 
@@ -187,17 +188,25 @@ class Imitator:
     parsed from amc file. Should be a element of the list returned from
     `reader.parse_amc`.
 
+    translate: Whether add global translate to the mesh. Not recommended since
+    the mesh is likely to move beyond the screen.
+
     """
     self.asf_joints['root'].set_motion(motion)
-    self.asf_to_smpl_joints()
+    self.asf_to_smpl_joints(translate)
     self.smpl_joints_to_mesh()
 
-  def imitate(self, motion):
+  def imitate(self, motion, translate=False):
     """
     A warpper for `set_asf_motion` with a cool name.
 
+    Prameter
+    --------
+    translate: Whether add global translate to the mesh. Not recommended since
+    the mesh is likely to move beyond the screen.
+
     """
-    self.set_asf_motion(motion)
+    self.set_asf_motion(motion, translate)
 
 
 if __name__ == '__main__':

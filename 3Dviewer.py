@@ -273,23 +273,6 @@ class MeshViewer:
 
     glClearColor(0.0, 0.0, 0.0, 0.0)
     glShadeModel(GL_SMOOTH)
-    glEnable(GL_LIGHT0)
-    glEnable(GL_LIGHT1)
-    glEnable(GL_LIGHTING)
-    glEnable(GL_CULL_FACE)
-    glEnable(GL_DEPTH_TEST)
-    glEnable(GL_VERTEX_ARRAY)
-    glEnable(GL_NORMAL_ARRAY)
-
-    # glMaterialfv(
-    #   GL_FRONT, GL_SPECULAR, np.array([1, 1, 1, 1], dtype=np.float32)
-    # )
-    # glMaterialfv(
-    #   GL_FRONT, GL_SHININESS, np.array([100.0], dtype=np.float32)
-    # )
-    # glMaterialfv(
-    #   GL_FRONT, GL_AMBIENT, np.array([0.7, 0.7, 0.7, 0.7], dtype=np.float32)
-    # )
 
     glMaterialfv(
       GL_FRONT,
@@ -312,9 +295,7 @@ class MeshViewer:
       .4 * 128.0
     )
 
-    # glLightfv(GL_LIGHT0, GL_POSITION, np.array([0, 0, 1, 0], dtype=np.float32))
-
-    gluPerspective(45, (self.screen_size[0]/self.screen_size[1]), 0.1, 50.0)
+    glLightfv(GL_LIGHT0, GL_POSITION, np.array([1, 1, 1, 0], dtype=np.float32))
 
     glLightfv(
       GL_LIGHT0,
@@ -330,11 +311,21 @@ class MeshViewer:
       np.array([1, 1, 1, 1], dtype=np.float32)
     )
 
-  def run(self):
+    glEnable(GL_LIGHT0)
+    glEnable(GL_LIGHTING)
+    glEnable(GL_CULL_FACE)
+    glEnable(GL_DEPTH_TEST)
+    glEnable(GL_VERTEX_ARRAY)
+    glEnable(GL_NORMAL_ARRAY)
+    gluPerspective(45, (self.screen_size[0]/self.screen_size[1]), 0.1, 50.0)
+
+  def run(self, translate=False):
     global_rx = 0
     global_ry = 0
     # default mesh tranlsation to put the mesh in the center of the window
-    std_trans = np.array([-4, 0.22, 3], dtype=np.float32)
+    # if translate is True, this translation need to be set carefully to make
+    # sure the mesh is within the screen.
+    std_trans = np.array([0, 0.2, -3], dtype=np.float32)
     global_trans = std_trans
     speed_rx = np.pi / 90
     speed_ry = np.pi / 90
