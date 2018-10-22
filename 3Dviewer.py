@@ -494,7 +494,7 @@ def test_mesh():
   viewer.run()
 
 
-def video_sample():
+def video_example():
   target_folder = './video'
   try:
     os.makedirs(target_folder)
@@ -535,4 +535,4 @@ def video_sample():
 if __name__ == '__main__':
   # test_mesh()
   # test_skeleton()
-  video_sample()
+  video_example()
