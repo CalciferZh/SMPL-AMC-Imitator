@@ -1,4 +1,4 @@
-# SMPL AMC/ASF Imitator
+# SMPL AMC Imitator
 
 **NOTE**: the code style is awful and I don't have time to prettify it. If anyone is really going to use this, please open an issue and I'll response as soon as possible.
 
